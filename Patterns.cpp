@@ -1,4 +1,8 @@
-#include "Config.h"
+#include "Patterns.h"
+
+#include "AudioProcessing.h"
+#include "LEDDriver.h"
+#include "Tables.h"
 
 void Gradients() {
 	r[0] = (224 * bright2) / 256;
@@ -51,13 +55,13 @@ void RGBWaves() {
 	uint8_t t, v;
 	for(uint8_t i = 0; i < 8; i++) {
 		//t = phaseR + stepR * i;
-		//r[i] = (pgm_read_byte(gammasin + t) * bright2) >> 8;
+		//r[i] = (getGammaSin(t) * bright2) >> 8;
 		
 		t = phaseG + stepG * i;
-		g[i] = (pgm_read_byte(gammasin + t) * bright2) >> 8;
+		g[i] = (getGammaSin(t) * bright2) >> 8;
 
 		t = phaseB + stepB * i;
-		b[i] = (pgm_read_byte(gammasin + t) * bright2) >> 8;
+		b[i] = (getGammaSin(t) * bright2) >> 8;
 	}		
 }	
  
@@ -99,14 +103,14 @@ void StartupPattern() {
 	r[6] = phaseR + stepR * 6;
 	r[7] = phaseR + stepR * 7;
 
-	r[0] = pgm_read_byte(gammasin + r[0]);
-	r[1] = pgm_read_byte(gammasin + r[1]);
-	r[2] = pgm_read_byte(gammasin + r[2]);
-	r[3] = pgm_read_byte(gammasin + r[3]);
-	r[4] = pgm_read_byte(gammasin + r[4]);
-	r[5] = pgm_read_byte(gammasin + r[5]);
-	r[6] = pgm_read_byte(gammasin + r[6]);
-	r[7] = pgm_read_byte(gammasin + r[7]);
+	r[0] = getGammaSin(r[0]);
+	r[1] = getGammaSin(r[1]);
+	r[2] = getGammaSin(r[2]);
+	r[3] = getGammaSin(r[3]);
+	r[4] = getGammaSin(r[4]);
+	r[5] = getGammaSin(r[5]);
+	r[6] = getGammaSin(r[6]);
+	r[7] = getGammaSin(r[7]);
 
 	g[0] = phaseG + stepG * 0;
 	g[1] = phaseG + stepG * 1;
@@ -117,14 +121,14 @@ void StartupPattern() {
 	g[6] = phaseG + stepG * 6;
 	g[7] = phaseG + stepG * 7;
 
-	g[0] = pgm_read_byte(gammasin + g[0]);
-	g[1] = pgm_read_byte(gammasin + g[1]);
-	g[2] = pgm_read_byte(gammasin + g[2]);
-	g[3] = pgm_read_byte(gammasin + g[3]);
-	g[4] = pgm_read_byte(gammasin + g[4]);
-	g[5] = pgm_read_byte(gammasin + g[5]);
-	g[6] = pgm_read_byte(gammasin + g[6]);
-	g[7] = pgm_read_byte(gammasin + g[7]);
+	g[0] = getGammaSin(g[0]);
+	g[1] = getGammaSin(g[1]);
+	g[2] = getGammaSin(g[2]);
+	g[3] = getGammaSin(g[3]);
+	g[4] = getGammaSin(g[4]);
+	g[5] = getGammaSin(g[5]);
+	g[6] = getGammaSin(g[6]);
+	g[7] = getGammaSin(g[7]);
 	
 	b[0] = phaseB + stepB * 0;
 	b[1] = phaseB + stepB * 1;
@@ -135,14 +139,14 @@ void StartupPattern() {
 	b[6] = phaseB + stepB * 6;
 	b[7] = phaseB + stepB * 7;
 
-	b[0] = pgm_read_byte(gammasin + b[0]);
-	b[1] = pgm_read_byte(gammasin + b[1]);
-	b[2] = pgm_read_byte(gammasin + b[2]);
-	b[3] = pgm_read_byte(gammasin + b[3]);
-	b[4] = pgm_read_byte(gammasin + b[4]);
-	b[5] = pgm_read_byte(gammasin + b[5]);
-	b[6] = pgm_read_byte(gammasin + b[6]);
-	b[7] = pgm_read_byte(gammasin + b[7]);
+	b[0] = getGammaSin(b[0]);
+	b[1] = getGammaSin(b[1]);
+	b[2] = getGammaSin(b[2]);
+	b[3] = getGammaSin(b[3]);
+	b[4] = getGammaSin(b[4]);
+	b[5] = getGammaSin(b[5]);
+	b[6] = getGammaSin(b[6]);
+	b[7] = getGammaSin(b[7]);
 	
 	/*	
 	for(int i = 0; i < 8; i++) {
@@ -177,14 +181,14 @@ void Sparkles() {
 	x[6] += 10;
 	x[7] += 9;
 	
-	b[0] = pgm_read_byte(sparkles + uint8_t(x[0] >> 8));
-	b[1] = pgm_read_byte(sparkles + uint8_t((x[1] >> 8) + 118));
-	b[2] = pgm_read_byte(sparkles + uint8_t((x[2] >> 8) + 22));
-	b[3] = pgm_read_byte(sparkles + uint8_t((x[3] >> 8) + 200));
-	b[4] = pgm_read_byte(sparkles + uint8_t((x[4] >> 8) + 230));
-	b[5] = pgm_read_byte(sparkles + uint8_t((x[5] >> 8) + 92));
-	b[6] = pgm_read_byte(sparkles + uint8_t((x[6] >> 8) + 60));
-	b[7] = pgm_read_byte(sparkles + uint8_t((x[7] >> 8) + 157));
+	b[0] = getSparkle(uint8_t(x[0] >> 8));
+	b[1] = getSparkle(uint8_t((x[1] >> 8) + 118));
+	b[2] = getSparkle(uint8_t((x[2] >> 8) + 22));
+	b[3] = getSparkle(uint8_t((x[3] >> 8) + 200));
+	b[4] = getSparkle(uint8_t((x[4] >> 8) + 230));
+	b[5] = getSparkle(uint8_t((x[5] >> 8) + 92));
+	b[6] = getSparkle(uint8_t((x[6] >> 8) + 60));
+	b[7] = getSparkle(uint8_t((x[7] >> 8) + 157));
 	
 	for(int i = 0; i < 8; i++) b[i] = (b[i] * bright1) >> 8;
 	
@@ -203,6 +207,7 @@ void Sparkles() {
 	}		
 }
 
+/*
 void Scroller() {
 	static uint8_t buffer[256];
 	static uint8_t tick = 0;
@@ -224,6 +229,7 @@ void Scroller() {
 		b[i] = buffer[x3];
 	}
 }
+*/
 
 const uint8_t pixel16[256] PROGMEM =
 {
@@ -248,6 +254,7 @@ const uint8_t pixel16[256] PROGMEM =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
+/*
 void SpaceZoom() {
 	static uint8_t tick1 = 0;
 	static uint8_t tick2 = 0;
@@ -274,13 +281,13 @@ void SpaceZoom() {
 	
 	for(int i = 0; i < 8; i++) {
 		uint8_t x = (i * 16 - 63) + 128;
-		uint8_t s = pgm_read_byte(sintab + frame);
+		uint8_t s = getSin(frame);
 		uint8_t shift = s/4 - (256 / 8);
 		
 		x += shift;
 		x += 128;
 		
-		uint8_t t = (255 - pgm_read_byte(quadtab + x));
+		uint8_t t = (255 - getQuad(x));
 
 		uint8_t t1 = t / 4 + cursor;
 		uint8_t t2 = t / 5 + cursor;
@@ -291,3 +298,4 @@ void SpaceZoom() {
 		b[i] = buffer[t3];
 	}
 }
+*/

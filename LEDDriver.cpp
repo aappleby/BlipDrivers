@@ -1,4 +1,5 @@
-#include "Config.h"
+#include "LEDDriver.h"
+#include "Defines.h"
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
@@ -22,8 +23,15 @@ uint8_t bits_RF[8];
 uint8_t bits_GF[8];
 uint8_t bits_BF[8];
 
+// Back buffer
+uint8_t r[8];
+uint8_t g[8];
+uint8_t b[8];
+
 uint16_t led_tick = 0;
 volatile uint8_t blank = 0;
+
+void(*timer_callback)() ;
 
 //------------------------------------------------------------------------------
 // New interrupt handlers
@@ -685,10 +693,6 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 
 //------------------------------------------------------------------------------
 // Framebuffer conversion
-
-uint8_t r[8];
-uint8_t g[8];
-uint8_t b[8];
 
 // Conversion from rgb to bitpacked buffer takes ~581 cycles. It should be more
 // like 480, but this isn't really worth optimizing further.
