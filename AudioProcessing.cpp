@@ -123,6 +123,9 @@ __attribute__((noinline)) void Adapt1() {
 */
 
 __attribute__((naked)) void Adapt1() {
+	asm("push r28");
+	asm("push r29");
+	
 	asm("lds r30, tickcount");
 	asm("tst r30");
 	asm("breq trig1_adapt");
@@ -136,26 +139,26 @@ __attribute__((naked)) void Adapt1() {
 	asm("trig1_adapt:");
 	asm("lds r30, tmax1 + 0");
 	asm("lds r31, tmax1 + 1");
-	asm("mov r20, r31");
-	asm("lsr r20");
-	asm("lsr r20");
+	asm("mov r28, r31");
+	asm("lsr r28");
+	asm("lsr r28");
 	
 	// Increase trigger if accum >= 4096, otherwise decrease.
-	asm("lds r21, brightaccum1 + 1");
-	asm("andi r21, 0xF0");
+	asm("lds r29, brightaccum1 + 1");
+	asm("andi r29, 0xF0");
 	asm("breq trig1_down");
 	
 	asm("trig1_up:");
-	asm("clr r21");
+	asm("clr r29");
 	asm("adiw r30, 1");
-	asm("add r30, r20");
-	asm("adc r31, r21");
+	asm("add r30, r28");
+	asm("adc r31, r29");
 	asm("jmp trig1_done");
 	
 	asm("trig1_down:");
-	asm("clr r21");
-	asm("sub r30, r20");
-	asm("sbc r31, r21");
+	asm("clr r29");
+	asm("sub r30, r28");
+	asm("sbc r31, r29");
 	asm("sbiw r30, 1");
 	asm("nop");
 	asm("nop");
@@ -165,6 +168,9 @@ __attribute__((naked)) void Adapt1() {
 	asm("sts tmax1 + 1, r31");
 	
 	asm("trig1_noadapt:");
+	
+	asm("pop r29");
+	asm("pop r28");
 	asm("ret");
 }
 
@@ -187,6 +193,9 @@ __attribute__((noinline)) void Adapt2() {
 */
 
 __attribute__((naked)) void Adapt2() {
+	asm("push r28");
+	asm("push r29");
+	
 	asm("lds r30, tickcount");
 	asm("tst r30");
 	asm("breq trig2_adapt");
@@ -200,26 +209,26 @@ __attribute__((naked)) void Adapt2() {
 	asm("trig2_adapt:");
 	asm("lds r30, tmax2 + 0");
 	asm("lds r31, tmax2 + 1");
-	asm("mov r20, r31");
-	asm("lsr r20");
-	asm("lsr r20");
+	asm("mov r28, r31");
+	asm("lsr r28");
+	asm("lsr r28");
 	
 	// Increase trigger if accum >= 4096, otherwise decrease.
-	asm("lds r21, brightaccum2 + 1");
-	asm("andi r21, 0xF0");
+	asm("lds r29, brightaccum2 + 1");
+	asm("andi r29, 0xF0");
 	asm("breq trig2_down");
 	
 	asm("trig2_up:");
-	asm("clr r21");
+	asm("clr r29");
 	asm("adiw r30, 1");
-	asm("add r30, r20");
-	asm("adc r31, r21");
+	asm("add r30, r28");
+	asm("adc r31, r29");
 	asm("jmp trig2_done");
 	
 	asm("trig2_down:");
-	asm("clr r21");
-	asm("sub r30, r20");
-	asm("sbc r31, r21");
+	asm("clr r29");
+	asm("sub r30, r28");
+	asm("sbc r31, r29");
 	asm("sbiw r30, 1");
 	asm("nop");
 	asm("nop");
@@ -229,6 +238,9 @@ __attribute__((naked)) void Adapt2() {
 	asm("sts tmax2 + 1, r31");
 	
 	asm("trig2_noadapt:");
+	
+	asm("pop r29");
+	asm("pop r28");
 	asm("ret");
 }
 
