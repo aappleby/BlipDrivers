@@ -72,6 +72,7 @@ __attribute__((noinline)) void NormalizeTreb() {
 }
 */
 
+/*
 __attribute__((naked)) void Clamp2() {
 	// if(tmax2 & 0x8000) tmax2 -= 256;
 	// if(tmax2 < TRIG2_CLAMP) tmax2++;
@@ -101,8 +102,9 @@ __attribute__((naked)) void Clamp2() {
 	asm("sts tmax2 + 1, r31");
 	asm("ret");
 }
+*/
 
-
+/*
 __attribute__((noinline)) void Adapt1() {
 	if(tickcount == 0) {
 		uint16_t up = tmax1 >> 10;
@@ -118,7 +120,54 @@ __attribute__((noinline)) void Adapt1() {
 		}
 	}		
 }
+*/
 
+__attribute__((naked)) void Adapt1() {
+	asm("lds r30, tickcount");
+	asm("tst r30");
+	asm("breq trig1_adapt");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("ret");
+	
+	asm("trig1_adapt:");
+	asm("lds r30, tmax1 + 0");
+	asm("lds r31, tmax1 + 1");
+	asm("mov r20, r31");
+	asm("lsr r20");
+	asm("lsr r20");
+	
+	// Increase trigger if accum >= 4096, otherwise decrease.
+	asm("lds r21, brightaccum1 + 1");
+	asm("andi r21, 0xF0");
+	asm("breq trig1_down");
+	
+	asm("trig1_up:");
+	asm("clr r21");
+	asm("adiw r30, 1");
+	asm("add r30, r20");
+	asm("adc r31, r21");
+	asm("jmp trig1_done");
+	
+	asm("trig1_down:");
+	asm("clr r21");
+	asm("sub r30, r20");
+	asm("sbc r31, r21");
+	asm("sbiw r30, 1");
+	asm("nop");
+	asm("nop");
+	
+	asm("trig1_done:");
+	
+	asm("sts tmax1 + 0, r30");
+	asm("sts tmax1 + 1, r31");
+	asm("ret");
+}
+
+/*
 __attribute__((noinline)) void Adapt2() {
 	if(tickcount == 0) {
 		uint16_t up = tmax2 >> 10;
@@ -133,7 +182,54 @@ __attribute__((noinline)) void Adapt2() {
 			tmax2 -= 1;
 		}
 	}		
-}	
+}
+*/
+
+__attribute__((naked)) void Adapt2() {
+	asm("lds r30, tickcount");
+	asm("tst r30");
+	asm("breq trig2_adapt");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("ret");
+	
+	asm("trig2_adapt:");
+	asm("lds r30, tmax2 + 0");
+	asm("lds r31, tmax2 + 1");
+	asm("mov r20, r31");
+	asm("lsr r20");
+	asm("lsr r20");
+	
+	// Increase trigger if accum >= 4096, otherwise decrease.
+	asm("lds r21, brightaccum2 + 1");
+	asm("andi r21, 0xF0");
+	asm("breq trig2_down");
+	
+	asm("trig2_up:");
+	asm("clr r21");
+	asm("adiw r30, 1");
+	asm("add r30, r20");
+	asm("adc r31, r21");
+	asm("jmp trig2_done");
+	
+	asm("trig2_down:");
+	asm("clr r21");
+	asm("sub r30, r20");
+	asm("sbc r31, r21");
+	asm("sbiw r30, 1");
+	asm("nop");
+	asm("nop");
+	
+	asm("trig2_done:");
+	
+	asm("sts tmax2 + 0, r30");
+	asm("sts tmax2 + 1, r31");
+	asm("ret");
+}
+
 
 //----------
 // Every 64 samples, adapt to volume
@@ -211,7 +307,7 @@ __attribute__((noinline)) void UpdateAudioSync() {
 	//NormalizeBass();
 	//NormalizeTreb();
 	//Clamp1();
-	Clamp2();
+	//Clamp2();
 	Adapt1();
 	Adapt2();
 	Adapt3();

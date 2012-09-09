@@ -329,14 +329,39 @@ __attribute__((naked)) void bits_green_6() {
 		asm("lds r25, bits_GF + 4");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
+
+	// if(tmax2 & 0x8000) tmax2 -= 256;
+	// if(tmax2 < TRIG2_CLAMP) tmax2++;
+	// 18 cycles
+	
+	asm("lds r30, tmax2 + 0");
+	asm("lds r31, tmax2 + 1");
+
+	// Clamp if above 32767
+	asm("sbrc r31, 7");
+	asm("subi r31, 0x01");
+	
+	// Clamp if below 60
+	asm("clr r25");
+	asm("cpi r30, 60");
+	asm("cpc r31, r25"); // r25 is a zero register
+	asm("brge trig2_noclamp");
+	asm("adiw r30, 1");
+	asm("rjmp trig2_clampdone");
+	
+	asm("trig2_noclamp:");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("trig2_clampdone:");
+	
+	asm("sts tmax2 + 0, r30");
+	asm("sts tmax2 + 1, r31");
+
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop");
 
 	// send 10.0 uS pulse
 	{

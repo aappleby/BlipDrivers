@@ -38,7 +38,7 @@ extern uint8_t bright1;
 extern uint8_t bright2;
 extern uint16_t tmax1;
 extern uint16_t tmax2;
-extern uint32_t audio_tick; // ~4.68 khz?
+extern uint8_t tickcount;
 
 // from LEDDriver.cpp
 
