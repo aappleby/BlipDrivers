@@ -36,8 +36,8 @@ void UpdateAudio(int16_t sample);
 void UpdateAudioSync();
 extern uint8_t bright1;
 extern uint8_t bright2;
-extern int16_t tmax1;
-extern int16_t tmax2;
+extern uint16_t tmax1;
+extern uint16_t tmax2;
 extern uint32_t audio_tick; // ~4.68 khz?
 
 // from LEDDriver.cpp

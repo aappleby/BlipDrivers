@@ -13,5 +13,8 @@ void SetupADC() {
 	ADMUX  = bit(MUX0) | bit(ADLAR);
 	ADCSRA = bit(ADEN) | bit(ADPS2);
 	sbi(ADCSRA,ADSC);
+	
+	tmax1 = 0;
+	tmax2 = 0;
 }	
 #endif

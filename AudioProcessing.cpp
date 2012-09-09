@@ -2,28 +2,21 @@
 
 //-----------------------------------------------------------------------------
 
-#define TRIG1_STEP   1
 #define TRIG1_CLAMP  60
 #define BRIGHT1_UP   (65535 / 30)
 #define BRIGHT1_DOWN (65535 / 300)
-#define BRIGHT1_MAX  64
 
-#define TRIG2_STEP   1
 #define TRIG2_CLAMP  60
 #define BRIGHT2_UP   (65535 / 40)
 #define BRIGHT2_DOWN (65535 / 700)
-#define BRIGHT2_MAX  64
-
-#define DCFILTER    5
-#define BASSFILTER  3
 
 //-----------------------------------------------------------------------------
 
-int16_t  tmax1;
-int16_t  tmax2;
+uint16_t tmax1;
+uint16_t tmax2;
 
-int16_t sample;
-int16_t bass;
+uint16_t sample;
+uint16_t bass;
 
 int16_t accumD;
 int16_t accumB;
@@ -42,6 +35,7 @@ uint8_t tickcount = 0;
 //-----------------------------------------------------------------------------
 
 /*
+#define DCFILTER    5
 __attribute__((noinline)) void RemoveRumble() {
 	// remove rumble + residual DC bias
 	sample -= accumD;
@@ -59,6 +53,7 @@ __attribute__((noinline)) void RemoveNoise() {
 
 // split into bass & treble
 /*
+#define BASSFILTER  3
 __attribute__((noinline)) void SplitBass() {
 	sample -= accumB;
 	accumB += (sample >> BASSFILTER);
@@ -77,47 +72,75 @@ __attribute__((noinline)) void NormalizeTreb() {
 }
 */
 
+__attribute__((naked)) void Clamp2() {
+	// if(tmax2 & 0x8000) tmax2 -= 256;
+	// if(tmax2 < TRIG2_CLAMP) tmax2++;
+	// 17 cycles
+
+	asm("lds r30, tmax2 + 0");
+	asm("lds r31, tmax2 + 1");
+
+	// Clamp if above 32767
+	asm("sbrc r31, 7");
+	asm("subi r31, 0x01");
+	
+	// Clamp if below 60
+	asm("cpi r30, 60");
+	asm("cpc r31, r1"); // THIS NEEDS A ZERO REGISTER
+	asm("brge trig2_noclamp");
+	asm("adiw r30, 1");
+	asm("rjmp trig2_clampdone");
+	
+	asm("trig2_noclamp:");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("trig2_clampdone:");
+	
+	asm("sts tmax2 + 0, r30");
+	asm("sts tmax2 + 1, r31");
+	asm("ret");
+}
+
+
+__attribute__((noinline)) void Adapt1() {
+	if(tickcount == 0) {
+		uint16_t up = tmax1 >> 10;
+		if(brightaccum1 >> 12)
+		{
+			tmax1 += 1;
+			tmax1 += up;
+		}
+		else
+		{
+			tmax1 -= up;
+			tmax1 -= 1;
+		}
+	}		
+}
+
+__attribute__((noinline)) void Adapt2() {
+	if(tickcount == 0) {
+		uint16_t up = tmax2 >> 10;
+		if(brightaccum2 >> 12)
+		{
+			tmax2 += 1;
+			tmax2 += up;
+		}
+		else
+		{
+			tmax2 -= up;
+			tmax2 -= 1;
+		}
+	}		
+}	
+
 //----------
 // Every 64 samples, adapt to volume
-__attribute__((noinline)) void Adapt() {
-	tickcount += 4;
 
+__attribute__((noinline)) void Adapt3() {
 	if(tickcount == 0)
 	{
-		if(brightaccum1 > (BRIGHT1_MAX*64))
-		{
-			if(tmax1 < 32000)
-			{
-				tmax1 += TRIG1_STEP;
-				tmax1 += tmax1 >> 10;
-			}
-		}
-		else
-		{
-			if(tmax1 > TRIG1_CLAMP)
-			{
-				tmax1 -= tmax1 >> 10;
-				tmax1 -= TRIG1_STEP;
-			}
-		}
-
-		if(brightaccum2 > (BRIGHT2_MAX*64))
-		{
-			if(tmax2 < 32000)
-			{
-				tmax2 += TRIG2_STEP;
-				tmax2 += tmax2 >> 10;
-			}
-		}
-		else
-		{
-			if(tmax2 > TRIG2_CLAMP)
-			{
-				tmax2 -= tmax2 >> 10;
-				tmax2 -= TRIG2_STEP;
-			}
-		}
-
 		brightaccum1 = 0;
 		brightaccum2 = 0;
 	}
@@ -132,30 +155,41 @@ __attribute__((noinline)) void UpdateBass() {
 		{
 			ibright2 += BRIGHT2_UP;
 		}
+		else {
+			ibright2 = 65535;
+		}			
 	}
 	else
 	{
-		if(ibright2 >= BRIGHT2_DOWN)
+		if(ibright2 & 0xFF00)
 		{
 			ibright2 -= BRIGHT2_DOWN;
-		}
+		} else {
+			ibright2 = 0;
+		}			
 	}
 }
 
 __attribute__((noinline)) void UpdateTreble() {
 	if(sample > tmax1)
 	{
-		if(ibright1 <= (65535-BRIGHT1_UP))
+		if(ibright1 < (65535-BRIGHT1_UP))
 		{
 			ibright1 += BRIGHT1_UP;
 		}
+		else {
+			ibright1 = 65535;
+		}			
 	}
 	else
 	{
-		if(ibright1 >= BRIGHT1_DOWN)
+		if(ibright1 > BRIGHT1_DOWN)
 		{
 			ibright1 -= BRIGHT1_DOWN;
 		}
+		else {
+			ibright1 = 0;
+		}			
 	}
 }
 
@@ -176,7 +210,11 @@ __attribute__((noinline)) void UpdateAudioSync() {
 	//SplitBass();
 	//NormalizeBass();
 	//NormalizeTreb();
-	Adapt();
+	//Clamp1();
+	Clamp2();
+	Adapt1();
+	Adapt2();
+	Adapt3();
 	UpdateBass();
 	UpdateTreble();
 	ScaleValues();

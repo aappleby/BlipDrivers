@@ -79,40 +79,101 @@ void pattern() {
 	*/
 }
 
-volatile uint8_t button_up;
-volatile uint8_t button_down;
-
 void UpdateAudio ( int16_t sample );
 
-int16_t blep;
+uint16_t dummy_trigger1;
+uint16_t dummy_accum1;
+uint8_t dummy_tickcount1;
 
-__attribute__((naked)) void myabs2() {
-	asm("lds r24, blep + 0");
-	asm("lds r25, blep + 1");
-
-	// absolute value, 7 cycles.
-	{
-		asm("sbrc r25, 7");
-		asm("jmp negate");
-		asm("nop");	
-		asm("jmp abs_done");
-		asm("negate:");
-		asm("com r25");
-		asm("neg r24");
-		asm("sbci r25, 0xFF");
-		asm("abs_done:");
-	}	
+// 28 cycles
+/*
+__attribute__((naked)) void Adapt1A() {
+	asm("lds r30, dummy_tickcount1");
+	asm("tst r30");
+	asm("breq trig1_adapt");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("ret");
 	
-	asm("sts blep + 0, r24");
-	asm("sts blep + 1, r25");
+	asm("trig1_adapt:");
+	asm("lds r30, dummy_trigger1 + 0");
+	asm("lds r31, dummy_trigger1 + 1");
+	asm("mov r20, r31");
+	asm("lsr r20");
+	asm("lsr r20");
+	
+	// Increase trigger if accum >= 4096, otherwise decrease.
+	asm("lds r21, dummy_accum1 + 1");
+	asm("andi r21, 0xF0");
+	asm("breq trig1_down");
+	
+	asm("trig1_up:");
+	asm("clr r21");
+	asm("adiw r30, 1");
+	asm("add r30, r20");
+	asm("adc r31, r21");
+	asm("jmp trig1_done");
+	
+	asm("trig1_down:");
+	asm("clr r21");
+	asm("sub r30, r20");
+	asm("sbc r31, r21");
+	asm("sbiw r30, 1");
+	asm("nop");
+	asm("nop");
+	
+	asm("trig1_done:");
+	
+	asm("sts dummy_trigger1 + 0, r30");
+	asm("sts dummy_trigger1 + 1, r31");
 	asm("ret");
 }
+*/
 
+/*
+uint16_t dummy_trigger2;
+uint16_t dummy_accum2;
 
+void Adapt1B() {
+	uint16_t up = dummy_trigger2 >> 10;
+	
+	if(dummy_accum2 >> 12)
+	{
+		dummy_trigger2 += 1;
+		dummy_trigger2 += up;
+	}
+	else
+	{
+		dummy_trigger2 -= up;
+		dummy_trigger2 -= 1;
+	}
+}
+*/	
 
+void Clamp1();
 
 int main(void)
 {
+	/*
+	dummy_trigger1 = 100;
+	dummy_accum1 = 0xFFFF;
+	dummy_tickcount1 = 0;
+	Adapt1A();
+	
+	dummy_trigger1 = 100;
+	dummy_accum1 = 0xFFFF;
+	dummy_tickcount1 = 1;
+	Adapt1A();
+
+	dummy_trigger1 = 100;
+	dummy_accum1 = 0;
+	dummy_tickcount1 = 1;
+	Adapt1A();
+	*/
+
 	// Turn off the serial interface, which the bootloader leaves on by default.
 	UCSR0B &= ~(1 << RXEN0);
 	UCSR0B &= ~(1 << TXEN0);
