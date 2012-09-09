@@ -130,8 +130,8 @@ __attribute__((naked)) void Adapt1() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("ret");
+	asm("nop"); asm("nop");
+	asm("rjmp trig1_noadapt");
 	
 	asm("trig1_adapt:");
 	asm("lds r30, tmax1 + 0");
@@ -161,9 +161,10 @@ __attribute__((naked)) void Adapt1() {
 	asm("nop");
 	
 	asm("trig1_done:");
-	
 	asm("sts tmax1 + 0, r30");
 	asm("sts tmax1 + 1, r31");
+	
+	asm("trig1_noadapt:");
 	asm("ret");
 }
 
@@ -193,8 +194,8 @@ __attribute__((naked)) void Adapt2() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("ret");
+	asm("nop"); asm("nop");
+	asm("rjmp trig2_noadapt");
 	
 	asm("trig2_adapt:");
 	asm("lds r30, tmax2 + 0");
@@ -224,9 +225,10 @@ __attribute__((naked)) void Adapt2() {
 	asm("nop");
 	
 	asm("trig2_done:");
-	
 	asm("sts tmax2 + 0, r30");
 	asm("sts tmax2 + 1, r31");
+	
+	asm("trig2_noadapt:");
 	asm("ret");
 }
 
