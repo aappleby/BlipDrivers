@@ -10,6 +10,10 @@
 #include <util/delay.h>
 
 void testLEDs() {
+	// Turn off the serial interface, which the bootloader leaves on by default.
+	UCSR0B &= ~(1 << RXEN0);
+	UCSR0B &= ~(1 << TXEN0);
+	
 	DDRB = 0x04;
 	PORTB = 0x00;
 	
