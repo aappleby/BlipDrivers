@@ -81,13 +81,8 @@ void pattern() {
 
 void UpdateAudio ( int16_t sample );
 
-void Adapt1();
-
 int main(void)
 {
-	tickcount = 0;
-	Adapt1();	
-	
 	// Turn off the serial interface, which the bootloader leaves on by default.
 	UCSR0B &= ~(1 << RXEN0);
 	UCSR0B &= ~(1 << TXEN0);

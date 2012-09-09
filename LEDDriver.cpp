@@ -196,42 +196,50 @@ __attribute__((naked)) void bits_red_6() {
 	asm("subi r30, 0xFC");
 	asm("sts tickcount, r30");
 	
-	// if(tmax1 & 0x8000) tmax1 -= 256;
-	// if(tmax1 < TRIG1_CLAMP) tmax1++;
+	// adapt1
 	
-	/*
+	asm("lds r30, tickcount");
+	asm("tst r30");
+	asm("breq trig1_adapt");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop");
+	asm("rjmp trig1_noadapt");
+	
+	asm("trig1_adapt:");
 	asm("lds r30, tmax1 + 0");
 	asm("lds r31, tmax1 + 1");
-
-	// Clamp if above 32767
-	asm("sbrc r31, 7");
-	asm("subi r31, 0x01");
+	asm("mov r28, r31");
+	asm("lsr r28");
+	asm("lsr r28");
 	
-	// Clamp if below 60
-	asm("clr r25");
-	asm("cpi r30, 60");
-	asm("cpc r31, r25"); // r25 is a zero register
-	asm("brge trig1_noclamp");
+	// Increase trigger if accum >= 4096, otherwise decrease.
+	asm("lds r29, brightaccum1 + 1");
+	asm("andi r29, 0xF0");
+	asm("breq trig1_down");
+	
+	asm("trig1_up:");
+	asm("clr r29");
 	asm("adiw r30, 1");
-	asm("rjmp trig1_clampdone");
+	asm("add r30, r28");
+	asm("adc r31, r29");
+	asm("jmp trig1_done");
 	
-	asm("trig1_noclamp:");
+	asm("trig1_down:");
+	asm("clr r29");
+	asm("sub r30, r28");
+	asm("sbc r31, r29");
+	asm("sbiw r30, 1");
 	asm("nop");
 	asm("nop");
-	asm("nop");
-	asm("trig1_clampdone:");
 	
+	asm("trig1_done:");
 	asm("sts tmax1 + 0, r30");
 	asm("sts tmax1 + 1, r31");
-	*/
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop");
-
 	
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("trig1_noadapt:");
 
 	// restore temp registers
 	asm("pop r29");
@@ -401,17 +409,70 @@ __attribute__((naked)) void bits_green_6() {
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
 	
+	// adapt 2
+	
+	asm("lds r30, tickcount");
+	asm("tst r30");
+	asm("breq trig2_adapt");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop");
+	asm("rjmp trig2_noadapt");
+	
+	asm("trig2_adapt:");
+	asm("lds r30, tmax2 + 0");
+	asm("lds r31, tmax2 + 1");
+	asm("mov r28, r31");
+	asm("lsr r28");
+	asm("lsr r28");
+	
+	// Increase trigger if accum >= 4096, otherwise decrease.
+	asm("lds r29, brightaccum2 + 1");
+	asm("andi r29, 0xF0");
+	asm("breq trig2_down");
+	
+	asm("trig2_up:");
+	asm("clr r29");
+	asm("adiw r30, 1");
+	asm("add r30, r28");
+	asm("adc r31, r29");
+	asm("jmp trig2_done");
+	
+	asm("trig2_down:");
+	asm("clr r29");
+	asm("sub r30, r28");
+	asm("sbc r31, r29");
+	asm("sbiw r30, 1");
+	asm("nop");
+	asm("nop");
+	
+	asm("trig2_done:");
+	asm("sts tmax2 + 0, r30");
+	asm("sts tmax2 + 1, r31");
+	
+	asm("trig2_noadapt:");
+
+	// if(tickcount == 0) { brightaccum1 = 0; brightaccum2 = 0; }
+	// 14 cycles
+	
+	asm("lds r30, tickcount");
+	asm("tst r30");
+	asm("brne noclear");
+	asm("sts brightaccum1 + 0, r30");
+	asm("sts brightaccum1 + 1, r30");
+	asm("sts brightaccum2 + 0, r30");
+	asm("sts brightaccum2 + 1, r30");
+	asm("rjmp cleardone");
+	asm("noclear:");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("cleardone:");
+
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop");
 	
 	// restore temp registers
 	asm("pop r29");
