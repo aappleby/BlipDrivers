@@ -40,4 +40,19 @@
 #define tbi(p,b) { p ^= (unsigned char)bit(b); }
 #define gbi(p,b) (p & (unsigned char)bit(b))
 
+#define lo8(A) (uint16_t(A) & 0xFF)
+#define hi8(A) (uint16_t(A) >> 8)
+
+//-----------------------------------------------------------------------------
+
+#define TRIG1_CLAMP  60
+#define BRIGHT1_UP   (65535 / 30)
+#define BRIGHT1_DOWN (65535 / 300)
+
+#define TRIG2_CLAMP  60
+#define BRIGHT2_UP   (65535 / 40)
+#define BRIGHT2_DOWN (65535 / 700)
+
+//-----------------------------------------------------------------------------
+
 #endif
