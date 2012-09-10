@@ -36,15 +36,15 @@ void(*timer_callback)() ;
 
 __attribute__((naked)) void bits_red_6() {
 	// end previous pulse
-	asm("clr r30");
-	asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	asm("clr r25");
+	asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
 
 	// Dead space between PWM cycles. Time spent here should cause
 	// the overall PWM rate to be 4.096 khz, or ~1953 cycles.
 	
 	{
 		// clear blanking flag (2 cycles)
-		asm("sts blank, r30");
+		asm("sts blank, r25");
 	
 		// increment LED tick (10 cycles)
 		asm("lds r30, led_tick");
@@ -63,19 +63,19 @@ __attribute__((naked)) void bits_red_6() {
 	}		
 
 	// switch to new sink
-	asm("ldi r30, %0" : : "M" (SINK_RED));
-	asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SINK)) );
+	asm("ldi r25, %0" : : "M" (SINK_RED));
+	asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SINK)) );
 	
 	// send 0.375 uS pulse
 	{
-		asm("lds r30, bits_RF + 0");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_RF + 0");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
 	// send 0.625 uS pulse
 	{
-		asm("lds r30, bits_RF + 1");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_RF + 1");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
 	
 	// 1 cycle gap
@@ -85,20 +85,13 @@ __attribute__((naked)) void bits_red_6() {
 	
 	// send 1.25 uS pulse
 	{
-		asm("lds r30, bits_RF + 2");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_RF + 2");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
 	
 	// 7 cycle gap
-	// save additional temp registers, 6 cycles.
-	{
-		asm("nop"); asm("nop");
-		asm("nop"); asm("nop");
-		asm("nop"); asm("nop");
-	}		
-	
-	// 1 spare cycle
-	asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop");
 	
 	// send 2.5 uS pulse
 	{
@@ -270,43 +263,35 @@ __attribute__((naked)) void bits_red_6() {
 		asm("trig1_noadapt:");
 	}		
 
-	// restore temp registers, 10 cycles
-	{
-		asm("nop"); asm("nop");
-		asm("nop"); asm("nop");
-		asm("nop"); asm("nop");
-		asm("nop"); asm("nop");
-		asm("nop"); asm("nop");
-	}		
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	
+	// send 20.0 uS pulse
+	asm("lds r25, bits_RF + 6");
+	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+
 	// set next callback, 6 cycles
-	{
-		asm("ldi r30, pm_lo8(bits_red_7)");
-		asm("ldi r31, pm_hi8(bits_red_7)");
-		asm("sts timer_callback, r30");
-		asm("sts timer_callback+1, r31");
-	}		
+	asm("ldi r30, pm_lo8(bits_red_7)");
+	asm("ldi r31, pm_hi8(bits_red_7)");
+	asm("sts timer_callback, r30");
+	asm("sts timer_callback+1, r31");
 	
 	// set next timeout, 6 cycles
-	{
-		asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6)) );
-		asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6)) );
-		asm("sts %0, r31" : : "" (TCNT1H));
-		asm("sts %0, r30" : : "" (TCNT1L));
-	}		
+	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6)) );
+	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6)) );
+	asm("sts %0, r31" : : "" (TCNT1H));
+	asm("sts %0, r30" : : "" (TCNT1L));
 
-	{
-		// send 20.0 uS pulse
-		asm("lds r30, bits_RF + 6");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
-	}		
-	
 	asm("ret");
 }
 
 //----------
 
 __attribute__((naked)) void bits_red_7() {
+	// send 40.0 uS pulse
+	asm("lds r25, bits_RF + 7");
+	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_green_6)");
 	asm("ldi r31, pm_hi8(bits_green_6)");
@@ -319,10 +304,6 @@ __attribute__((naked)) void bits_red_7() {
 	asm("sts %0, r31" : : "" (TCNT1H));
 	asm("sts %0, r30" : : "" (TCNT1L));
 
-	// send 40.0 uS pulse
-	asm("lds r30, bits_RF + 7");
-	asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
-	
 	asm("ret");
 }
 
@@ -330,23 +311,23 @@ __attribute__((naked)) void bits_red_7() {
 
 __attribute__((naked)) void bits_green_6() {
 	// end previous pulse
-	asm("clr r30");
-	asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	asm("clr r25");
+	asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
 
 	// switch to new sink
-	asm("ldi r30, %0" : : "M" (SINK_GREEN));
-	asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SINK)) );
+	asm("ldi r25, %0" : : "M" (SINK_GREEN));
+	asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SINK)) );
 	
 	// send 0.375 uS pulse
 	{
-		asm("lds r31, bits_GF + 0");
-		asm("out %0, r31" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_GF + 0");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
 	// send 0.625 uS pulse
 	{
-		asm("lds r30, bits_GF + 1");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_GF + 1");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
 	// 1 cycle gap
 	
@@ -355,9 +336,10 @@ __attribute__((naked)) void bits_green_6() {
 	
 	// send 1.25 uS pulse
 	{
-		asm("lds r30, bits_GF + 2");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
-	}		
+		asm("lds r25, bits_GF + 2");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	}
+	// 7 cycle gap
 	
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop");
@@ -524,8 +506,14 @@ __attribute__((naked)) void bits_green_6() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	
+	// send 20.0 uS pulse
+	asm("lds r25, bits_GF + 6");
+	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_green_7)");
 	asm("ldi r31, pm_hi8(bits_green_7)");
@@ -537,17 +525,15 @@ __attribute__((naked)) void bits_green_6() {
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6)) );
 	asm("sts %0, r31" : : "" (TCNT1H));
 	asm("sts %0, r30" : : "" (TCNT1L));
-
-	// send 10.0 uS pulse
-	{
-		asm("lds r30, bits_GF + 6");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
-	}		
 	
 	asm("ret");
 }
 
 __attribute__((naked)) void bits_green_7() {
+	// send 40.0 uS pulse
+	asm("lds r25, bits_GF + 7");
+	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_blue_6)");
 	asm("ldi r31, pm_hi8(bits_blue_6)");
@@ -559,10 +545,6 @@ __attribute__((naked)) void bits_green_7() {
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7)) );
 	asm("sts %0, r31" : : "" (TCNT1H));
 	asm("sts %0, r30" : : "" (TCNT1L));
-	
-	// send 40.0 uS pulse
-	asm("lds r30, bits_GF + 7");
-	asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	
 	asm("ret");
 }
@@ -651,58 +633,46 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-
-	// set next callback
-	// 6 cycles
-	{
-		asm("ldi r30, pm_lo8(bits_blue_7)");
-		asm("ldi r31, pm_hi8(bits_blue_7)");
-		asm("sts timer_callback, r30");
-		asm("sts timer_callback+1, r31");
-	}		
-	
-	// set next timeout
-	// 6 cycles
-	{
-		asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6)) );
-		asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6)) );
-		asm("sts %0, r31" : : "" (TCNT1H));
-		asm("sts %0, r30" : : "" (TCNT1L));
-	}		
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop");
 
 	// send 20.0 uS pulse	
-	{
-		asm("lds r25, bits_BF + 6");
-		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
-	}		
+	asm("lds r25, bits_BF + 6");
+	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+
+	// set next callback
+	asm("ldi r30, pm_lo8(bits_blue_7)");
+	asm("ldi r31, pm_hi8(bits_blue_7)");
+	asm("sts timer_callback, r30");
+	asm("sts timer_callback+1, r31");
+	
+	// set next timeout
+	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6)) );
+	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6)) );
+	asm("sts %0, r31" : : "" (TCNT1H));
+	asm("sts %0, r30" : : "" (TCNT1L));
 	
 	asm("ret");
 }	
 
 __attribute__((naked)) void bits_blue_7() {
+	// send 40.0 uS pulse
+	asm("lds r25, bits_BF + 7");
+	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	
 	// set next callback
-	// 6 cycles
-	{
-		asm("ldi r30, pm_lo8(bits_red_6)");
-		asm("ldi r31, pm_hi8(bits_red_6)");
-		asm("sts timer_callback, r30");
-		asm("sts timer_callback+1, r31");
-	}		
+	asm("ldi r30, pm_lo8(bits_red_6)");
+	asm("ldi r31, pm_hi8(bits_red_6)");
+	asm("sts timer_callback, r30");
+	asm("sts timer_callback+1, r31");
 
 	// set next timeout
 	// 6 cycles
-	{
-		asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7)) );
-		asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7)) );
-		asm("sts %0, r31" : : "" (TCNT1H));
-		asm("sts %0, r30" : : "" (TCNT1L));
-	}		
-	
-	{
-		// send 40.0 uS pulse
-		asm("lds r25, bits_BF + 7");
-		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
-	}		
+	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7)) );
+	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7)) );
+	asm("sts %0, r31" : : "" (TCNT1H));
+	asm("sts %0, r30" : : "" (TCNT1L));
 	
 	// set blanking flag (3 cycles)
 	asm("ldi r25, 1");
