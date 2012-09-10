@@ -4,40 +4,111 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
 
-void bits_red_6();
-void bits_red_7();
-	
-void bits_green_6();
-void bits_green_7();
-	
-void bits_blue_6();
-void bits_blue_7();
+//-----------------------------------------------------------------------------
 
 // Front buffer
 uint8_t bits_RF[8];
 uint8_t bits_GF[8];
 uint8_t bits_BF[8];
 
-// Back buffer
 uint8_t r[8];
 uint8_t g[8];
 uint8_t b[8];
 
-uint16_t led_tick = 0;
-volatile uint8_t blank = 0;
+// Blanking interval
+volatile uint8_t blank;
 
-void(*timer_callback)() ;
+// PWM cycle tick, 4.096 kilohertz.
+uint16_t led_tick;
+
+// PWM callback function pointer dispatched by the timer interrupt.
+void (*timer_callback)() ;
+
+//-----------------------------------------------------------------------------
+// Treble channel trigger value
+uint16_t tmax1;
+
+// Bass channel trigger value
+uint16_t tmax2;
+
+// Current sample, contains treble signal after bass/treble split.
+uint16_t sample;
+
+// Current bass sample.
+uint16_t bass;
+
+// DC filter accumulator
+int16_t accumD;
+
+// Bass filter accumulator
+int16_t accumB;
+
+// Brightness cursor, treble channel.
+uint16_t ibright1;
+
+// Brightness cursor, bass channel.
+uint16_t ibright2;
+
+// Brightness accumulator, treble channel/
+uint16_t brightaccum1 = 0;
+
+// Brightness accumulator, bass channel.
+uint16_t brightaccum2 = 0;
+
+// Output brightness, treble channel
+uint8_t bright1 = 0;
+
+// Output brightness, bass channel
+uint8_t bright2 = 0;
+
+// Internal tick count to trigger volume adaptation every 64 cycles.
+uint8_t tickcount = 0;
+
+//-----------------------------------------------------------------------------
+
+const uint8_t exptab[256] PROGMEM =
+{
+0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,5,5,
+5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,8,9,9,9,9,9,10,10,10,
+10,10,11,11,11,11,12,12,12,12,13,13,13,14,14,14,14,15,15,15,16,16,16,17,
+17,18,18,18,19,19,20,20,21,21,21,22,22,23,23,24,24,25,25,26,27,27,28,28,
+29,30,30,31,32,32,33,34,35,35,36,37,38,39,39,40,41,42,43,44,45,46,47,48,
+49,50,51,52,53,55,56,57,58,59,61,62,63,65,66,68,69,71,72,74,76,77,79,81,
+82,84,86,88,90,92,94,96,98,100,102,105,107,109,112,114,117,119,122,124,
+127,130,133,136,139,142,145,148,151,155,158,162,165,169,172,176,180,184,
+188,192,196,201,205,210,214,219,224,229,234,239,244,250,255,
+};
+
+// numeric brightness -> perceived brightness
+
+const uint8_t gammatab[256] PROGMEM = 
+{
+0,15,22,27,31,35,39,42,45,47,50,52,55,57,59,61,63,65,67,69,71,73,74,76,78,79,
+81,82,84,85,87,88,90,91,93,94,95,97,98,99,100,102,103,104,105,107,108,109,110,
+111,112,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,
+131,132,133,134,135,136,137,138,139,140,141,141,142,143,144,145,146,147,148,
+148,149,150,151,152,153,153,154,155,156,157,158,158,159,160,161,162,162,163,
+164,165,165,166,167,168,168,169,170,171,171,172,173,174,174,175,176,177,177,
+178,179,179,180,181,182,182,183,184,184,185,186,186,187,188,188,189,190,190,
+191,192,192,193,194,194,195,196,196,197,198,198,199,200,200,201,201,202,203,
+203,204,205,205,206,206,207,208,208,209,210,210,211,211,212,213,213,214,214,
+215,216,216,217,217,218,218,219,220,220,221,221,222,222,223,224,224,225,225,
+226,226,227,228,228,229,229,230,230,231,231,232,233,233,234,234,235,235,236,
+236,237,237,238,238,239,240,240,241,241,242,242,243,243,244,244,245,245,246,
+246,247,247,248,248,249,249,250,250,251,251,252,252,253,253,254,255,
+};
 
 //------------------------------------------------------------------------------
 // New interrupt handlers
 
-#define TIMEOUT_6R (65536 - 121)
-#define TIMEOUT_6G (65536 - 121)
-#define TIMEOUT_6B (65536 - 121)
+#define TIMEOUT_6R (65536 - 127)
+#define TIMEOUT_6G (65536 - 127)
+#define TIMEOUT_6B (65536 - 127)
 
-#define TIMEOUT_7R (65536 - 294)
-#define TIMEOUT_7G (65536 - 294)
-#define TIMEOUT_7B (65536 - 294)
+#define TIMEOUT_7R (65536 - 300)
+#define TIMEOUT_7G (65536 - 300)
+#define TIMEOUT_7B (65536 - 300)
 
 __attribute__((naked)) void bits_red_6() {
 	// end previous pulse
@@ -52,7 +123,7 @@ __attribute__((naked)) void bits_red_6() {
 	{
 		// clear blanking flag (2 cycles)
 		asm("sts blank, r30");
-	
+
 		// increment LED tick (10 cycles)
 		asm("lds r30, led_tick");
 		asm("lds r31, led_tick+1");
@@ -66,7 +137,7 @@ __attribute__((naked)) void bits_red_6() {
 		asm("sts sample + 0, r30");
 		asm("sts sample + 1, r31");
 
-		asm("nop"); asm("nop");
+		asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	}		
 
 	// switch to new sink
@@ -84,11 +155,11 @@ __attribute__((naked)) void bits_red_6() {
 		asm("lds r30, bits_RF + 1");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	
 	// 1 cycle gap
 
 	// set the monitor bit (2 cycles)
-	asm("sbi %0, 2" : : "I"(_SFR_IO_ADDR(PORTC)) );
+	//asm("sbi %0, 2" : : "I"(_SFR_IO_ADDR(PORTC)) );
+	asm("nop"); asm("nop");
 	
 	// send 1.25 uS pulse
 	{
@@ -351,7 +422,8 @@ __attribute__((naked)) void bits_green_6() {
 	// 1 cycle gap
 	
 	// clear the monitor bit (2 cycles)
-	asm("cbi %0, 2" : : "I"(_SFR_IO_ADDR(PORTC)) );
+	//asm("cbi %0, 2" : : "I"(_SFR_IO_ADDR(PORTC)) );
+	asm("nop"); asm("nop");
 	
 	// send 1.25 uS pulse
 	{
@@ -925,6 +997,16 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 
 void swap() {
 	
+	// Back buffer
+	/*
+	uint8_t bits_RB[8];
+	uint8_t bits_GB[8];
+	uint8_t bits_BB[8];
+
+	while(blank);
+	while(!blank);
+	*/
+
 	uint8_t c0 = r[0], c1 = r[1], c2 = r[2], c3 = r[3], c4 = r[4], c5 = r[5], c6 = r[6], c7 = r[7];
 	uint8_t t = 0;
 	
@@ -1050,6 +1132,39 @@ void swap() {
 	if(c0 & 0x01) t |= SOURCE_1; if(c1 & 0x01) t |= SOURCE_2; if(c2 & 0x01) t |= SOURCE_3; if(c3 & 0x01) t |= SOURCE_4;
 	if(c4 & 0x01) t |= SOURCE_5; if(c5 & 0x01) t |= SOURCE_6; if(c6 & 0x01) t |= SOURCE_7; if(c7 & 0x01) t |= SOURCE_8;
 	bits_BF[0] = t;
+	
+	// swap
+	
+	/*
+	while(blank);
+	while(!blank);
+	bits_RF[7] = bits_RB[7];
+	bits_RF[6] = bits_RB[6];
+	bits_RF[5] = bits_RB[5];
+	bits_RF[4] = bits_RB[4];
+	bits_RF[3] = bits_RB[3];
+	bits_RF[2] = bits_RB[2];
+	bits_RF[1] = bits_RB[1];
+	bits_RF[0] = bits_RB[0];
+
+	bits_GF[7] = bits_GB[7];
+	bits_GF[6] = bits_GB[6];
+	bits_GF[5] = bits_GB[5];
+	bits_GF[4] = bits_GB[4];
+	bits_GF[3] = bits_GB[3];
+	bits_GF[2] = bits_GB[2];
+	bits_GF[1] = bits_GB[1];
+	bits_GF[0] = bits_GB[0];
+
+	bits_BF[7] = bits_BB[7];
+	bits_BF[6] = bits_BB[6];
+	bits_BF[5] = bits_BB[5];
+	bits_BF[4] = bits_BB[4];
+	bits_BF[3] = bits_BB[3];
+	bits_BF[2] = bits_BB[2];
+	bits_BF[1] = bits_BB[1];
+	bits_BF[0] = bits_BB[0];
+	*/
 }	
 
 //------------------------------------------------------------------------------

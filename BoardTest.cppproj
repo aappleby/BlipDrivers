@@ -127,12 +127,6 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AudioProcessing.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="AudioProcessing.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="Defines.h">
       <SubType>compile</SubType>
     </Compile>

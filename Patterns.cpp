@@ -1,6 +1,5 @@
 #include "Patterns.h"
 
-#include "AudioProcessing.h"
 #include "LEDDriver.h"
 #include "Tables.h"
 
@@ -54,11 +53,11 @@ void RGBWaves() {
 	
 	uint8_t t, v;
 	for(uint8_t i = 0; i < 8; i++) {
-		//t = phaseR + stepR * i;
-		//r[i] = (getGammaSin(t) * bright2) >> 8;
+		t = phaseR + stepR * i;
+		r[i] = (getGammaSin(t) * bright2) >> 8;
 		
 		t = phaseG + stepG * i;
-		g[i] = (getGammaSin(t) * bright2) >> 8;
+		g[i] = (getGammaSin(t) * bright1) >> 8;
 
 		t = phaseB + stepB * i;
 		b[i] = (getGammaSin(t) * bright2) >> 8;
@@ -207,7 +206,6 @@ void Sparkles() {
 	}		
 }
 
-/*
 void Scroller() {
 	static uint8_t buffer[256];
 	static uint8_t tick = 0;
@@ -229,7 +227,6 @@ void Scroller() {
 		b[i] = buffer[x3];
 	}
 }
-*/
 
 const uint8_t pixel16[256] PROGMEM =
 {
@@ -254,7 +251,6 @@ const uint8_t pixel16[256] PROGMEM =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-/*
 void SpaceZoom() {
 	static uint8_t tick1 = 0;
 	static uint8_t tick2 = 0;
@@ -298,4 +294,3 @@ void SpaceZoom() {
 		b[i] = buffer[t3];
 	}
 }
-*/

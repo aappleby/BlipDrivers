@@ -1,7 +1,6 @@
 #include "Defines.h"
 #include "Patterns.h"
 
-#include "AudioProcessing.h"
 #include "LEDDriver.h"
 #include "Tables.h"
 
@@ -116,13 +115,77 @@ int main(void)
 	SetupADC();
 	SetupLEDs();
 	
-	pattern_callback = audio_test;
+	pattern_callback = StartupPattern;
 	
 	while(1) {
-		//asm("nop");
+		/*
+		float t, c;
+		t = led_tick;
+		t /= 4096.0 * 8;
+		t *= 3.14159265 * 2.0;
+		c = 0;
+		for(int i = 0; i < 8; i++) {
+			float x = sin(t + c);
+			x = (x + 1) / 2;
+			x = x*x;
+			//x *= bright1;
+			x *= 255;
+			r[i] = x;
+			c += (3.1415926535 * 2.0) / 8.0;
+		}
+		
+		t = led_tick;
+		t /= 3123.0 * 8;
+		t *= 3.14159265 * 2.0;
+		c = 0;
+		for(int i = 0; i < 8; i++) {
+			float x = sin(t + c);
+			x = (x + 1) / 2;
+			x = x*x;
+			//x *= bright1;
+			x *= 255;
+			g[i] = x;
+			c += (3.1415926535 * 2.0) / 8.0;
+		}
+
+		t = led_tick;
+		t /= 2712.0 * 8;
+		t *= 3.14159265 * 2.0;
+		c = 0;
+		for(int i = 0; i < 8; i++) {
+			float x = sin(t + c);
+			x = (x + 1) / 2;
+			x = x*x;
+			//x *= bright1;
+			x *= 255;
+			b[i] = x;
+			c += (3.1415926535 * 2.0) / 8.0;
+		}
+		swap();
+		*/
 		pattern_callback();
 		swap();
-		//PORTC ^= bit(3);
+		/*
+		r[0] = g[0] = b[0] = 1;
+		r[1] = g[1] = b[1] = 1;
+		r[2] = g[2] = b[2] = 1;
+		r[3] = g[3] = b[3] = 1;
+		r[4] = g[4] = b[4] = 1;
+		r[5] = g[5] = b[5] = 1;
+		r[6] = g[6] = b[6] = 1;
+		r[7] = g[7] = b[7] = 1;
+		swap();
+		r[0] = g[0] = b[0] = 2;
+		r[1] = g[1] = b[1] = 2;
+		r[2] = g[2] = b[2] = 2;
+		r[3] = g[3] = b[3] = 2;
+		r[4] = g[4] = b[4] = 2;
+		r[5] = g[5] = b[5] = 2;
+		r[6] = g[6] = b[6] = 2;
+		r[7] = g[7] = b[7] = 2;
+		swap();
+		*/
+		PORTC ^= bit(3);
 		//_delay_ms(1);
 	}		
 }
