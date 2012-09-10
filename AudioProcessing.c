@@ -102,37 +102,6 @@ __attribute__((noinline)) void NormalizeTreb() {
 }
 */
 
-/*
-__attribute__((naked)) void Clamp2() {
-	// if(tmax2 & 0x8000) tmax2 -= 256;
-	// if(tmax2 < TRIG2_CLAMP) tmax2++;
-	// 17 cycles
-
-	asm("lds r30, tmax2 + 0");
-	asm("lds r31, tmax2 + 1");
-
-	// Clamp if above 32767
-	asm("sbrc r31, 7");
-	asm("subi r31, 0x01");
-	
-	// Clamp if below 60
-	asm("cpi r30, 60");
-	asm("cpc r31, r1"); // THIS NEEDS A ZERO REGISTER
-	asm("brge trig2_noclamp");
-	asm("adiw r30, 1");
-	asm("rjmp trig2_clampdone");
-	
-	asm("trig2_noclamp:");
-	asm("nop");
-	asm("nop");
-	asm("nop");
-	asm("trig2_clampdone:");
-	
-	asm("sts tmax2 + 0, r30");
-	asm("sts tmax2 + 1, r31");
-	asm("ret");
-}
-*/
 
 /*
 __attribute__((noinline)) void Adapt1() {
@@ -210,6 +179,7 @@ __attribute__((naked)) void UpdateAudioSync() {
 	asm("push r30");
 	asm("push r31");
 	
+	/*
 	// 14 cycles
 	{
 		// uint16_t temp = ibright1;
@@ -223,8 +193,10 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("cpc r29, r31");
 		asm("lds r28, ibright1 + 0");
 		asm("lds r29, ibright1 + 1");
-	}		
+	}
+	*/		
 	
+	/*
 	// 12 cycles. don't split this block.
 	{
 		// if(sample >= tmax1)
@@ -265,16 +237,20 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("clr r28");
 		asm("clr r29");
 		asm("rjmp store_bright1");
-	}		
+	}
+	*/
 
+	/*
 	// 4 cycles
 	{
 		// ibright1 = temp;
 		asm("store_bright1:");
 		asm("sts ibright1 + 0, r28");
 		asm("sts ibright1 + 1, r29");
-	}		
+	}
+	*/		
 	
+	/*
 	// 9 cycles
 	{
 		// bright1 = pgm_read_byte(exptab+(ibright1 >> 8));
@@ -285,7 +261,9 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("lpm r30, Z");
 		asm("sts bright1, r30");
 	}
+	*/
 	
+	/*
 	// 17 cycles
 	{
 		// brightaccum1 += pgm_read_byte(gammatab+bright1);
@@ -300,8 +278,10 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("adc r31, r29");
 		asm("sts brightaccum1 + 0, r30");
 		asm("sts brightaccum1 + 1, r31");
-	}		
+	}
+	*/		
 	
+	/*
 	// 14 cycles
 	{
 		// uint16_t temp = ibright2;
@@ -314,8 +294,10 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("cpc r29, r31");
 		asm("lds r28, ibright2 + 0");
 		asm("lds r29, ibright2 + 1");
-	}		
+	}
+	*/		
 	
+	/*
 	// 12 cycles. don't split this block.
 	{
 		// if(bass >= tmax2)
@@ -357,16 +339,20 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("clr r28");
 		asm("clr r29");
 		asm("rjmp store_bright2");
-	}		
+	}
+	*/
 
+	/*
 	// 4 cycles
 	{
 		// ibright2 = temp;
 		asm("store_bright2:");
 		asm("sts ibright2 + 0, r28");
 		asm("sts ibright2 + 1, r29");
-	}		
+	}
+	*/
 	
+	/*
 	// 9 cycles
 	{
 		// bright2 = pgm_read_byte(exptab+(ibright2 >> 8));
@@ -376,8 +362,10 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("sbci r31, hi8(-(exptab))");
 		asm("lpm r30, Z");
 		asm("sts bright2, r30");
-	}		
+	}
+	*/		
 
+	/*
 	// 17 cycles
 	{
 		// brightaccum2 += pgm_read_byte(gammatab+bright2);
@@ -392,7 +380,8 @@ __attribute__((naked)) void UpdateAudioSync() {
 		asm("adc r31, r29");
 		asm("sts brightaccum2 + 0, r30");
 		asm("sts brightaccum2 + 1, r31");
-	}		
+	}
+	*/		
 	
 	asm("pop r31");
 	asm("pop r30");

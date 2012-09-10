@@ -119,12 +119,8 @@ int main(void)
 	pattern_callback = audio_test;
 	
 	while(1) {
-		while(!blank);
 		swap();
-		
-		while(blank);
 		pattern_callback();
-		UpdateAudioSync();
 		//PORTC ^= bit(3);
 		//_delay_ms(1);
 	}		
