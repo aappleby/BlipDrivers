@@ -115,16 +115,16 @@ __attribute__((naked)) void bits_red_6() {
 		// sample -= accumD;
 		// accumD += (sample >> DCFILTER);
 
-		asm("lds r26, sample + 0");
-		asm("lds r27, sample + 1");
+		asm("lds r28, sample + 0");
+		asm("lds r29, sample + 1");
 		asm("lds r30, accumD + 0");
 		asm("lds r31, accumD + 1");
 	
-		asm("sub r26, r30");
-		asm("sbc r27, r31");
+		asm("sub r28, r30");
+		asm("sbc r29, r31");
 	
-		asm("movw r28, r26");
-		asm("asr r29"); asm("ror r28");
+		asm("movw r26, r28");
+		asm("asr r27"); asm("ror r26");
 	}		
 
 	// send 5.0 uS pulse
@@ -135,13 +135,13 @@ __attribute__((naked)) void bits_red_6() {
 	
 	// remove dc bias, part 2.
 	{		
-		asm("asr r29"); asm("ror r28");
-		asm("asr r29"); asm("ror r28");
-		asm("asr r29"); asm("ror r28");
-		asm("asr r29"); asm("ror r28");
+		asm("asr r27"); asm("ror r26");
+		asm("asr r27"); asm("ror r26");
+		asm("asr r27"); asm("ror r26");
+		asm("asr r27"); asm("ror r26");
 	
-		asm("add r30, r28");
-		asm("adc r31, r29");
+		asm("add r30, r26");
+		asm("adc r31, r27");
 	
 		asm("sts accumD + 0, r30");
 		asm("sts accumD + 1, r31");
@@ -154,16 +154,16 @@ __attribute__((naked)) void bits_red_6() {
 	
 		asm("lds r30, accumB + 0");
 		asm("lds r31, accumB + 1");
-		asm("sub r26, r30");
-		asm("sbc r27, r31");
+		asm("sub r28, r30");
+		asm("sbc r29, r31");
 	
-		asm("movw r28, r26");
-		asm("asr r29"); asm("ror r28");
-		asm("asr r29"); asm("ror r28");
-		asm("asr r29"); asm("ror r28");
+		asm("movw r26, r28");
+		asm("asr r27"); asm("ror r26");
+		asm("asr r27"); asm("ror r26");
+		asm("asr r27"); asm("ror r26");
 	
-		asm("add r30, r28");
-		asm("adc r31, r29");
+		asm("add r30, r26");
+		asm("adc r31, r27");
 	
 		asm("sts accumB + 0, r30");
 		asm("sts accumB + 1, r31");
@@ -200,19 +200,19 @@ __attribute__((naked)) void bits_red_6() {
 	// normalize treble
 	{	
 		// if(sample < 0) sample = -sample;
-		asm("sbrc 27, 7");
+		asm("sbrc 29, 7");
 		asm("jmp negate_treb");
 		asm("nop");
 		asm("jmp treb_done");
 		asm("negate_treb:");
-		asm("com r27");
-		asm("neg r26");
-		asm("sbci r27, 0xFF");
+		asm("com r29");
+		asm("neg r28");
+		asm("sbci r29, 0xFF");
 		asm("treb_done:");
 		
 		// store sample.
-		asm("sts sample + 0, r26");
-		asm("sts sample + 1, r27");
+		asm("sts sample + 0, r28");
+		asm("sts sample + 1, r29");
 	}		
 	
 	// increment audio tick, 5 cycles
