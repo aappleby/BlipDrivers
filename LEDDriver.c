@@ -92,9 +92,9 @@ __attribute__((naked)) void bits_red_6() {
 	// 7 cycle gap
 	// save additional temp registers, 6 cycles.
 	{
-		asm("push r25");
-		asm("push r26");
-		asm("push r27");
+		asm("nop"); asm("nop");
+		asm("nop"); asm("nop");
+		asm("nop"); asm("nop");
 	}		
 	
 	// 1 spare cycle
@@ -107,8 +107,8 @@ __attribute__((naked)) void bits_red_6() {
 	}
 	// 17 cycle gap
 	
-	asm("push r28");
-	asm("push r29");
+	asm("push r26");
+	asm("push r27");
 	
 	// remove dc bias, part 1
 	{
@@ -171,8 +171,8 @@ __attribute__((naked)) void bits_red_6() {
 
 	// restore extra temp registers
 	{	
+		asm("pop r27");
 		asm("pop r26");
-		asm("pop r25");
 	}		
 
 	{
@@ -272,9 +272,9 @@ __attribute__((naked)) void bits_red_6() {
 
 	// restore temp registers, 10 cycles
 	{
-		asm("pop r29");
-		asm("pop r28");
-		asm("pop r27");
+		asm("nop"); asm("nop");
+		asm("nop"); asm("nop");
+		asm("nop"); asm("nop");
 		asm("nop"); asm("nop");
 		asm("nop"); asm("nop");
 	}		
