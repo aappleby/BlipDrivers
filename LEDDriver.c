@@ -110,6 +110,7 @@ __attribute__((naked)) void bits_red_6() {
 	}
 	// 17 cycle gap
 	
+	// save extra temp registers
 	asm("push r26");
 	asm("push r27");
 	
@@ -270,10 +271,8 @@ __attribute__((naked)) void bits_red_6() {
 	}		
 
 	// restore extra temp registers
-	{	
-		asm("pop r27");
-		asm("pop r26");
-	}		
+	asm("pop r27");
+	asm("pop r26");
 
 	// restore temp registers
 	asm("pop r29");
@@ -401,9 +400,9 @@ __attribute__((naked)) void bits_green_6() {
 		asm("subi r31, 0x01");
 	
 		// Clamp if below 60
-		asm("clr r25");
+		asm("clr r29");
 		asm("cpi r30, 60");
-		asm("cpc r31, r25"); // r25 is a zero register
+		asm("cpc r31, r29");
 		{
 			asm("brge trig2_noclamp");
 			asm("adiw r30, 1");
@@ -434,9 +433,9 @@ __attribute__((naked)) void bits_green_6() {
 		asm("subi r31, 0x01");
 	
 		// Clamp if below 60
-		asm("clr r25");
+		asm("clr r29");
 		asm("cpi r30, 60");
-		asm("cpc r31, r25"); // r25 is a zero register
+		asm("cpc r31, r29");
 		{
 			asm("brge trig1_noclamp");
 			asm("adiw r30, 1");
@@ -898,9 +897,6 @@ __attribute__((naked)) void bits_blue_7() {
 
 ISR(TIMER1_OVF_vect, ISR_NAKED)
 {
-	asm("push r25");
-	asm("push r28");
-	asm("push r29");
 	asm("push r30");
 	asm("push r31");
 	asm("in r30, 0x3f");
@@ -916,9 +912,6 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 	asm("out 0x3f, r30");
 	asm("pop r31");
 	asm("pop r30");
-	asm("pop r29");
-	asm("pop r28");
-	asm("pop r25");
 
 	// Done
 	asm("reti");
