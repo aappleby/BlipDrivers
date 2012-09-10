@@ -359,11 +359,8 @@ __attribute__((naked)) void bits_green_6() {
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
-	// save additional temp registers
-	asm("push r25");
-	asm("push r26");
-	asm("push r27");
-	asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop");
 	
 	// send 2.5 uS pulse
 	{
@@ -371,11 +368,10 @@ __attribute__((naked)) void bits_green_6() {
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 
-	asm("push r28");
-	asm("push r29");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop");
 	
 	// send 5.0 uS pulse
 	{
@@ -526,15 +522,10 @@ __attribute__((naked)) void bits_green_6() {
 
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop");
 	
-	// restore temp registers
-	asm("pop r29");
-	asm("pop r28");
-	asm("pop r27");
-	asm("pop r26");
-	asm("pop r25");
-
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_green_7)");
 	asm("ldi r31, pm_hi8(bits_green_7)");
