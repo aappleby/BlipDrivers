@@ -62,7 +62,7 @@ void green_test() {
 	static uint16_t timer;
 	
 	const int step = 35;
-	const int speed = 30;
+	const int speed = 1;
 	
 	timer += speed;
 	uint8_t phase = timer >> 8;

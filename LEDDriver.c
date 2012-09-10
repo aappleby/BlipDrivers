@@ -31,13 +31,15 @@ void(*timer_callback)() ;
 //------------------------------------------------------------------------------
 // New interrupt handlers
 
-#define TIMEOUT_6 (65536 - 127)
-#define TIMEOUT_7 (65536 - 300)
+#define TIMEOUT_6 (65536 - 118)
+#define TIMEOUT_7 (65536 - 279)
 
 __attribute__((naked)) void bits_red_6() {
 	// end previous pulse
-	asm("clr r25");
-	asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("clr r25");
+		asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 
 	// Dead space between PWM cycles. Time spent here should cause
 	// the overall PWM rate to be 4.096 khz, or ~1953 cycles.
@@ -265,10 +267,15 @@ __attribute__((naked)) void bits_red_6() {
 
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop");
 	
 	// send 20.0 uS pulse
-	asm("lds r25, bits_RF + 6");
-	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("lds r25, bits_RF + 6");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 
 	// set next callback, 6 cycles
 	asm("ldi r30, pm_lo8(bits_red_7)");
@@ -289,8 +296,10 @@ __attribute__((naked)) void bits_red_6() {
 
 __attribute__((naked)) void bits_red_7() {
 	// send 40.0 uS pulse
-	asm("lds r25, bits_RF + 7");
-	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("lds r25, bits_RF + 7");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 	
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_green_6)");
@@ -311,8 +320,10 @@ __attribute__((naked)) void bits_red_7() {
 
 __attribute__((naked)) void bits_green_6() {
 	// end previous pulse
-	asm("clr r25");
-	asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("clr r25");
+		asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 
 	// switch to new sink
 	asm("ldi r25, %0" : : "M" (SINK_GREEN));
@@ -511,8 +522,10 @@ __attribute__((naked)) void bits_green_6() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	
 	// send 20.0 uS pulse
-	asm("lds r25, bits_GF + 6");
-	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("lds r25, bits_GF + 6");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_green_7)");
@@ -531,8 +544,10 @@ __attribute__((naked)) void bits_green_6() {
 
 __attribute__((naked)) void bits_green_7() {
 	// send 40.0 uS pulse
-	asm("lds r25, bits_GF + 7");
-	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("lds r25, bits_GF + 7");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_blue_6)");
@@ -553,8 +568,10 @@ __attribute__((naked)) void bits_green_7() {
 
 __attribute__((naked)) void bits_blue_6() {
 	// end previous pulse
-	asm("clr r25");
-	asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("clr r25");
+		asm("out %0, r25" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 	
 	// switch to new sink
 	asm("ldi r25, %0" : : "M" (SINK_BLUE));
@@ -637,9 +654,11 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop");
 
-	// send 20.0 uS pulse	
-	asm("lds r25, bits_BF + 6");
-	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	// send 20.0 uS pulse
+	{
+		asm("lds r25, bits_BF + 6");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_blue_7)");
@@ -658,8 +677,10 @@ __attribute__((naked)) void bits_blue_6() {
 
 __attribute__((naked)) void bits_blue_7() {
 	// send 40.0 uS pulse
-	asm("lds r25, bits_BF + 7");
-	asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	{
+		asm("lds r25, bits_BF + 7");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+	}		
 	
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_red_6)");
