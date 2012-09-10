@@ -4,19 +4,14 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
 
-#define lo8(A) (uint16_t(A) & 0xFF)
-#define hi8(A) (uint16_t(A) >> 8)
-
-extern "C" {
-	void bits_red_6();
-	void bits_red_7();
+void bits_red_6();
+void bits_red_7();
 	
-	void bits_green_6();
-	void bits_green_7();
+void bits_green_6();
+void bits_green_7();
 	
-	void bits_blue_6();
-	void bits_blue_7();
-};
+void bits_blue_6();
+void bits_blue_7();
 
 // Front buffer
 uint8_t bits_RF[8];
@@ -561,14 +556,15 @@ __attribute__((naked)) void bits_blue_6() {
 	}
 	
 	// save additional temp registers
+	asm("push r25");
 	asm("push r28");
 	asm("push r29");
-	asm("nop"); asm("nop"); asm("nop");
+	asm("nop");
 	
 	{
 		// send 2.5 uS pulse
-		asm("lds r30, bits_BF + 3");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_BF + 3");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
 			
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
@@ -578,8 +574,8 @@ __attribute__((naked)) void bits_blue_6() {
 	
 	{
 		// send 5.0 uS pulse
-		asm("lds r30, bits_BF + 4");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_BF + 4");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
 			
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
@@ -593,8 +589,8 @@ __attribute__((naked)) void bits_blue_6() {
 
 	{
 		// send 10.0 uS pulse
-		asm("lds r30, bits_BF + 5");
-		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
+		asm("lds r25, bits_BF + 5");
+		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
 			
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
@@ -608,12 +604,12 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	
 	// restore temp registers
 	asm("pop r29");
 	asm("pop r28");
+	asm("pop r25");
 
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_blue_7)");

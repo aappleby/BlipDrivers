@@ -40,8 +40,8 @@
 #define tbi(p,b) { p ^= (unsigned char)bit(b); }
 #define gbi(p,b) (p & (unsigned char)bit(b))
 
-#define lo8(A) (uint16_t(A) & 0xFF)
-#define hi8(A) (uint16_t(A) >> 8)
+#define lo8(A) (((uint16_t)A) & 0xFF)
+#define hi8(A) (((uint16_t)A) >> 8)
 
 //-----------------------------------------------------------------------------
 

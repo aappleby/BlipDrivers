@@ -43,6 +43,8 @@ const uint8_t exptab[256] PROGMEM =
 188,192,196,201,205,210,214,219,224,229,234,239,244,250,255,
 };
 
+// numeric brightness -> perceived brightness
+
 const uint8_t gammatab[256] PROGMEM = 
 {
 0,15,22,27,31,35,39,42,45,47,50,52,55,57,59,61,63,65,67,69,71,73,74,76,78,79,
@@ -215,6 +217,7 @@ __attribute__((noinline)) void UpdateBass() {
 }
 */
 
+// 30 cycles
 __attribute__((naked)) void UpdateBass() {
 	asm("push r28");
 	asm("push r29");
@@ -227,12 +230,12 @@ __attribute__((naked)) void UpdateBass() {
 	asm("lds r31, tmax2 + 1");
 	asm("cp r28, r30");
 	asm("cpc r29, r31");
+	asm("lds r28, ibright2 + 0");
+	asm("lds r29, ibright2 + 1");
 	asm("brcs signal_low2");
 	asm("nop");
 	
 	asm("signal_high2:");
-	asm("lds r28, ibright2 + 0");
-	asm("lds r29, ibright2 + 1");
 	asm("ldi r30, %0" : : "M"(lo8(65535 - BRIGHT2_UP)) );
 	asm("ldi r31, %0" : : "M"(hi8(65535 - BRIGHT2_UP)) );
 	asm("cp r28, r30");
@@ -244,8 +247,6 @@ __attribute__((naked)) void UpdateBass() {
 	asm("rjmp store_bright2");
 
 	asm("signal_low2:");
-	asm("lds r28, ibright2 + 0");
-	asm("lds r29, ibright2 + 1");
 	asm("ldi r30, %0" : : "M"(lo8(BRIGHT2_DOWN)) );
 	asm("ldi r31, %0" : : "M"(hi8(BRIGHT2_DOWN)) );
 	asm("cp r28, r30");
@@ -292,6 +293,7 @@ __attribute__((noinline)) void UpdateTreble() {
 }
 */
 
+// 30 cycles
 __attribute__((naked)) void UpdateTreble() {
 	asm("push r28");
 	asm("push r29");
@@ -355,15 +357,68 @@ __attribute__((naked)) void UpdateTreble() {
 }
 
 
-__attribute__((noinline)) void ScaleValues() {
-	bright1 = pgm_read_byte(exptab+(ibright1 >> 8));
-	bright2 = pgm_read_byte(exptab+(ibright2 >> 8));
-}	
-
+/*
 __attribute__((noinline)) void UpdateAccum()
 {
+	bright1 = pgm_read_byte(exptab+(ibright1 >> 8));
 	brightaccum1 += pgm_read_byte(gammatab+bright1);
+
+	bright2 = pgm_read_byte(exptab+(ibright2 >> 8));
 	brightaccum2 += pgm_read_byte(gammatab+bright2);
+}
+*/
+
+__attribute__((naked)) void UpdateAccum() {
+	asm("push r28");
+	asm("push r29");
+	asm("push r30");
+	asm("push r31");
+	
+	asm("lds r30, ibright1 + 1");
+	asm("ldi r31, 0x00");
+	asm("subi r30, lo8(-(exptab))");
+	asm("sbci r31, hi8(-(exptab))");
+	asm("lpm r30, Z");
+	asm("sts bright1, r30");
+	
+	asm("lds r30, bright1");
+	asm("ldi r31, 0x00");
+	asm("subi r30, lo8(-(gammatab))");
+	asm("sbci r31, hi8(-(gammatab))");
+	asm("lpm r28, Z");
+	asm("ldi r29, 0x00");
+	asm("lds r30, brightaccum1 + 0");
+	asm("lds r31, brightaccum1 + 1");
+	asm("add r30, r28");
+	asm("adc r31, r29");
+	asm("sts brightaccum1 + 0, r30");
+	asm("sts brightaccum1 + 1, r31");
+	
+	asm("lds r30, ibright2 + 1");
+	asm("ldi r31, 0x00");
+	asm("subi r30, lo8(-(exptab))");
+	asm("sbci r31, hi8(-(exptab))");
+	asm("lpm r30, Z");
+	asm("sts bright2, r30");
+
+	asm("lds r30, bright2");
+	asm("ldi r31, 0x00");
+	asm("subi r30, lo8(-(gammatab))");
+	asm("sbci r31, hi8(-(gammatab))");
+	asm("lpm r28, Z");
+	asm("ldi r29, 0x00");
+	asm("lds r30, brightaccum2 + 0");
+	asm("lds r31, brightaccum2 + 1");
+	asm("add r30, r28");
+	asm("adc r31, r29");
+	asm("sts brightaccum2 + 0, r30");
+	asm("sts brightaccum2 + 1, r31");
+	
+	asm("pop r31");
+	asm("pop r30");
+	asm("pop r29");
+	asm("pop r28");
+	asm("ret");
 }
 
 //-----------------------------------------------------------------------------
@@ -379,6 +434,5 @@ __attribute__((noinline)) void UpdateAudioSync() {
 	//Adapt3();
 	UpdateBass();
 	UpdateTreble();
-	ScaleValues();
 	UpdateAccum();
 }	
