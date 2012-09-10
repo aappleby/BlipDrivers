@@ -119,8 +119,9 @@ int main(void)
 	pattern_callback = audio_test;
 	
 	while(1) {
-		swap();
+		//asm("nop");
 		pattern_callback();
+		swap();
 		//PORTC ^= bit(3);
 		//_delay_ms(1);
 	}		
