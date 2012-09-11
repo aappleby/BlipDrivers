@@ -36,7 +36,7 @@ int main(void)
 {
 	SetupLEDs();
 	
-	pattern_callback = RGBWaves;
+	pattern_callback = audio_test;
 	
 	while(1) {
 		pattern_callback();
