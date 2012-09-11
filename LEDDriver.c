@@ -7,9 +7,9 @@
 //-----------------------------------------------------------------------------
 
 // Front buffer
-volatile uint8_t bits_RF[8];
-volatile uint8_t bits_GF[8];
-volatile uint8_t bits_BF[8];
+uint8_t bits_RF[8];
+uint8_t bits_GF[8];
+uint8_t bits_BF[8];
 
 uint8_t r[8];
 uint8_t g[8];
@@ -364,7 +364,14 @@ __attribute__((naked)) void bits_red_6() {
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 
-	asm("ret");
+	// Restore status register, R31, and R30.
+	asm("pop r30");
+	asm("out 0x3f, r30");
+	asm("pop r31");
+	asm("pop r30");
+
+	// Done
+	asm("reti");
 }
 
 //----------
@@ -388,7 +395,14 @@ __attribute__((naked)) void bits_red_7() {
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
-	asm("ret");
+	// Restore status register, R31, and R30.
+	asm("pop r30");
+	asm("out 0x3f, r30");
+	asm("pop r31");
+	asm("pop r30");
+
+	// Done
+	asm("reti");
 }
 
 //------------------------------------------------------------------------------
@@ -621,7 +635,14 @@ __attribute__((naked)) void bits_green_6() {
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 
-	asm("ret");
+	// Restore status register, R31, and R30.
+	asm("pop r30");
+	asm("out 0x3f, r30");
+	asm("pop r31");
+	asm("pop r30");
+
+	// Done
+	asm("reti");
 }
 
 __attribute__((naked)) void bits_green_7() {
@@ -643,7 +664,14 @@ __attribute__((naked)) void bits_green_7() {
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 
-	asm("ret");
+	// Restore status register, R31, and R30.
+	asm("pop r30");
+	asm("out 0x3f, r30");
+	asm("pop r31");
+	asm("pop r30");
+
+	// Done
+	asm("reti");
 }
 
 //------------------------------------------------------------------------------
@@ -926,7 +954,14 @@ __attribute__((naked)) void bits_blue_6() {
 	// restore r25 out here because the 10 uS block is completely packed.
 	asm("pop r25");
 
-	asm("ret");
+	// Restore status register, R31, and R30.
+	asm("pop r30");
+	asm("out 0x3f, r30");
+	asm("pop r31");
+	asm("pop r30");
+
+	// Done
+	asm("reti");
 }	
 
 __attribute__((naked)) void bits_blue_7() {
@@ -958,7 +993,14 @@ __attribute__((naked)) void bits_blue_7() {
 	asm("ori r30, %0" : : "" (bit(ADSC)) );
 	asm("sts %0, r30" : : "" (ADCSRA) );
 	
-	asm("ret");
+	// Restore status register, R31, and R30.
+	asm("pop r30");
+	asm("out 0x3f, r30");
+	asm("pop r31");
+	asm("pop r30");
+
+	// Done
+	asm("reti");
 }	
 
 //------------------------------------------------------------------------------
@@ -973,16 +1015,7 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 	// Call interrupt callback
 	asm("lds r30, timer_callback");
 	asm("lds r31, timer_callback+1");
-	asm("icall");
-
-	// Restore status register, R31, and R30.
-	asm("pop r30");
-	asm("out 0x3f, r30");
-	asm("pop r31");
-	asm("pop r30");
-
-	// Done
-	asm("reti");
+	asm("ijmp");
 }
 
 //------------------------------------------------------------------------------
@@ -992,7 +1025,6 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 // like 480, but this isn't really worth optimizing further.
 
 void swap() {
-	
 	// Back buffer
 	uint8_t bits_RB[8];
 	uint8_t bits_GB[8];
@@ -1125,7 +1157,6 @@ void swap() {
 	bits_BB[0] = t;
 	
 	// swap
-	
 	while(blank);
 	while(!blank);
 	bits_RF[7] = bits_RB[7];

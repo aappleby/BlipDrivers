@@ -41,6 +41,7 @@ int main(void)
 	while(1) {
 		pattern_callback();
 		//sbi(PORTC,3);
+		//_delay_ms(1);
 		swap();
 		//cbi(PORTC,3);
 		//_delay_ms(1);
