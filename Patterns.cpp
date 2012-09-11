@@ -3,6 +3,64 @@
 #include "LEDDriver.h"
 #include "Tables.h"
 
+#include <math.h>
+
+void red_test() {
+	static uint16_t timer;
+	
+	const int step = 35;
+	const int speed = 3;
+	
+	timer += speed;
+	uint8_t phase = timer >> 8;
+
+	for(int i = 0; i < 8; i++) {
+		uint8_t t = phase + step * i;
+		r[i] = getGammaSin(t);
+	}
+}	
+
+void green_test() {
+	static uint16_t timer;
+	
+	const int step = 35;
+	const int speed = 1;
+	
+	timer += speed;
+	uint8_t phase = timer >> 8;
+
+	for(int i = 0; i < 8; i++) {
+		uint8_t t = phase + step * i;
+		g[i] = getGammaSin(t);
+	}
+}
+
+void blue_test() {
+	static uint16_t timer;
+	
+	const int step = 35;
+	const int speed = 3;
+	
+	timer += speed;
+	uint8_t phase = timer >> 8;
+
+	for(int i = 0; i < 8; i++) {
+		uint8_t t = phase + step * i;
+		b[i] = getGammaSin(t);
+	}
+}
+
+void audio_test() {
+	r[0] = g[0] = bright1 >> 2;
+	r[1] = g[1] = bright1 >> 2;
+	r[2] = b[2] = bright2;
+	r[3] = g[3] = b[3] = bright2;
+	r[4] = g[4] = b[4] = bright2;
+	r[5] = b[5] = bright2;
+	r[6] = g[6] = bright1 >> 2;
+	r[7] = g[7] = bright1 >> 2;
+}	
+
 void Gradients() {
 	r[0] = (224 * bright2) / 256;
 	r[1] = (192 * bright2) / 256;
@@ -70,14 +128,6 @@ void StartupPattern() {
 	static uint16_t timerG;
 	static uint16_t timerB;
 	
-	/*
-	const int stepR = 14;
-	const int stepG = 32;
-	const int stepB = 45;
-	const int speedR = 25;
-	const int speedG = -13;
-	const int speedB = 17;
-	*/
 	const int stepR = 25;
 	const int stepG = 26;
 	const int stepB = 27;
@@ -146,26 +196,18 @@ void StartupPattern() {
 	b[5] = getGammaSin(b[5]);
 	b[6] = getGammaSin(b[6]);
 	b[7] = getGammaSin(b[7]);
-	
-	/*	
-	for(int i = 0; i < 8; i++) {
-		r[i] = (r[i] * bright1) / 256;
-		g[i] = (g[i] * bright2) / 256;
-		b[i] = (b[i] * bright1) / 256;
-	}
-	*/
 }	
 
 void DumbPattern() {
-	r[0] = bright1;
-	r[1] = bright1;
-	r[2] = bright1;
-	r[3] = bright1;
-	
-	g[4] = bright2;
-	g[5] = bright2;
-	g[6] = bright2;
-	g[7] = bright2;
+	r[0] = g[0] = b[0] = bright1;
+	r[1] = g[1] = b[1] = bright1;
+	r[2] = g[2] = b[2] = bright1;
+	r[3] = g[3] = b[3] = bright1;
+
+	r[4] = g[4] = b[4] = bright2;
+	r[5] = g[5] = b[5] = bright2;
+	r[6] = g[6] = b[6] = bright2;
+	r[7] = g[7] = b[7] = bright2;
 }
 
 void Sparkles() {
@@ -294,3 +336,50 @@ void SpaceZoom() {
 		b[i] = buffer[t3];
 	}
 }
+
+/*
+void float_test() {
+	float t, c;
+	t = led_tick;
+	t /= 4096.0 * 8;
+	t *= 3.14159265 * 2.0;
+	c = 0;
+	for(int i = 0; i < 8; i++) {
+		float x = sin(t + c);
+		x = (x + 1) / 2;
+		x = x*x;
+		//x *= bright1;
+		x *= 255;
+		r[i] = x;
+		c += (3.1415926535 * 2.0) / 8.0;
+	}
+		
+	t = led_tick;
+	t /= 3123.0 * 8;
+	t *= 3.14159265 * 2.0;
+	c = 0;
+	for(int i = 0; i < 8; i++) {
+		float x = sin(t + c);
+		x = (x + 1) / 2;
+		x = x*x;
+		//x *= bright1;
+		x *= 255;
+		g[i] = x;
+		c += (3.1415926535 * 2.0) / 8.0;
+	}
+
+	t = led_tick;
+	t /= 2712.0 * 8;
+	t *= 3.14159265 * 2.0;
+	c = 0;
+	for(int i = 0; i < 8; i++) {
+		float x = sin(t + c);
+		x = (x + 1) / 2;
+		x = x*x;
+		//x *= bright1;
+		x *= 255;
+		b[i] = x;
+		c += (3.1415926535 * 2.0) / 8.0;
+	}
+}
+*/

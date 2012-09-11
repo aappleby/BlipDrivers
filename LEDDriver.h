@@ -9,6 +9,10 @@ extern "C" {
 
 void SetupLEDs();
 
+extern volatile uint8_t bits_RF[8];
+extern volatile uint8_t bits_GF[8];
+extern volatile uint8_t bits_BF[8];
+
 extern uint8_t r[8];
 extern uint8_t g[8];
 extern uint8_t b[8];

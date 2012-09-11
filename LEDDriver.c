@@ -7,9 +7,9 @@
 //-----------------------------------------------------------------------------
 
 // Front buffer
-uint8_t bits_RF[8];
-uint8_t bits_GF[8];
-uint8_t bits_BF[8];
+volatile uint8_t bits_RF[8];
+volatile uint8_t bits_GF[8];
+volatile uint8_t bits_BF[8];
 
 uint8_t r[8];
 uint8_t g[8];
@@ -131,13 +131,9 @@ __attribute__((naked)) void bits_red_6() {
 		asm("sts led_tick, r30");
 		asm("sts led_tick+1, r31");
 
-		// copy adc sample to sample buffer
-		asm("lds r30, %0" : : "" (ADCL));
-		asm("lds r31, %0" : : "" (ADCH));
-		asm("sts sample + 0, r30");
-		asm("sts sample + 1, r31");
-
-		asm("nop"); asm("nop"); asm("nop"); asm("nop");
+		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+		asm("nop"); asm("nop");
 	}		
 
 	// switch to new sink
@@ -190,8 +186,8 @@ __attribute__((naked)) void bits_red_6() {
 		// sample -= accumD;
 		// accumD += (sample >> DCFILTER);
 
-		asm("lds r28, sample + 0");
-		asm("lds r29, sample + 1");
+		asm("lds r28, %0" : : "" (ADCL) );
+		asm("lds r29, %0" : : "" (ADCH) );
 		asm("lds r30, accumD + 0");
 		asm("lds r31, accumD + 1");
 	
@@ -419,7 +415,7 @@ __attribute__((naked)) void bits_green_6() {
 		asm("lds r30, bits_GF + 1");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	// 1 cycle gap
+	// 3 cycle gap
 	
 	// clear the monitor bit (2 cycles)
 	//asm("cbi %0, 2" : : "I"(_SFR_IO_ADDR(PORTC)) );
@@ -958,9 +954,9 @@ __attribute__((naked)) void bits_blue_7() {
 	asm("sts blank, r30");
 	
 	// set ADC start conversion flag
-	asm("lds r30, %0" : : "" (ADCSRA));
-	asm("ori r30, 0x40");
-	asm("sts %0, r30" : : "" (ADCSRA));
+	asm("lds r30, %0" : : "" (ADCSRA) );
+	asm("ori r30, %0" : : "" (bit(ADSC)) );
+	asm("sts %0, r30" : : "" (ADCSRA) );
 	
 	asm("ret");
 }	
@@ -998,144 +994,138 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 void swap() {
 	
 	// Back buffer
-	/*
 	uint8_t bits_RB[8];
 	uint8_t bits_GB[8];
 	uint8_t bits_BB[8];
-
-	while(blank);
-	while(!blank);
-	*/
 
 	uint8_t c0 = r[0], c1 = r[1], c2 = r[2], c3 = r[3], c4 = r[4], c5 = r[5], c6 = r[6], c7 = r[7];
 	uint8_t t = 0;
 	
 	if(c0 & 0x80) t |= SOURCE_1; if(c1 & 0x80) t |= SOURCE_2; if(c2 & 0x80) t |= SOURCE_3; if(c3 & 0x80) t |= SOURCE_4;
 	if(c4 & 0x80) t |= SOURCE_5; if(c5 & 0x80) t |= SOURCE_6; if(c6 & 0x80) t |= SOURCE_7; if(c7 & 0x80) t |= SOURCE_8;
-	bits_RF[7] = t;
+	bits_RB[7] = t;
 		
 	t = 0;
 	if(c0 & 0x40) t |= SOURCE_1; if(c1 & 0x40) t |= SOURCE_2; if(c2 & 0x40) t |= SOURCE_3; if(c3 & 0x40) t |= SOURCE_4;
 	if(c4 & 0x40) t |= SOURCE_5; if(c5 & 0x40) t |= SOURCE_6; if(c6 & 0x40) t |= SOURCE_7; if(c7 & 0x40) t |= SOURCE_8;
-	bits_RF[6] = t;
+	bits_RB[6] = t;
 		
 	t = 0;
 	if(c0 & 0x20) t |= SOURCE_1; if(c1 & 0x20) t |= SOURCE_2; if(c2 & 0x20) t |= SOURCE_3; if(c3 & 0x20) t |= SOURCE_4;
 	if(c4 & 0x20) t |= SOURCE_5; if(c5 & 0x20) t |= SOURCE_6; if(c6 & 0x20) t |= SOURCE_7; if(c7 & 0x20) t |= SOURCE_8;
-	bits_RF[5] = t;
+	bits_RB[5] = t;
 
 	t = 0;
 	if(c0 & 0x10) t |= SOURCE_1; if(c1 & 0x10) t |= SOURCE_2; if(c2 & 0x10) t |= SOURCE_3; if(c3 & 0x10) t |= SOURCE_4;
 	if(c4 & 0x10) t |= SOURCE_5; if(c5 & 0x10) t |= SOURCE_6; if(c6 & 0x10) t |= SOURCE_7; if(c7 & 0x10) t |= SOURCE_8;
-	bits_RF[4] = t;
+	bits_RB[4] = t;
 
 	t = 0;
 	if(c0 & 0x08) t |= SOURCE_1; if(c1 & 0x08) t |= SOURCE_2; if(c2 & 0x08) t |= SOURCE_3; if(c3 & 0x08) t |= SOURCE_4;
 	if(c4 & 0x08) t |= SOURCE_5; if(c5 & 0x08) t |= SOURCE_6; if(c6 & 0x08) t |= SOURCE_7; if(c7 & 0x08) t |= SOURCE_8;
-	bits_RF[3] = t;
+	bits_RB[3] = t;
 
 	t = 0;
 	if(c0 & 0x04) t |= SOURCE_1; if(c1 & 0x04) t |= SOURCE_2; if(c2 & 0x04) t |= SOURCE_3; if(c3 & 0x04) t |= SOURCE_4;
 	if(c4 & 0x04) t |= SOURCE_5; if(c5 & 0x04) t |= SOURCE_6; if(c6 & 0x04) t |= SOURCE_7; if(c7 & 0x04) t |= SOURCE_8;
-	bits_RF[2] = t;
+	bits_RB[2] = t;
 		
 	t = 0;
 	if(c0 & 0x02) t |= SOURCE_1; if(c1 & 0x02) t |= SOURCE_2; if(c2 & 0x02) t |= SOURCE_3; if(c3 & 0x02) t |= SOURCE_4;
 	if(c4 & 0x02) t |= SOURCE_5; if(c5 & 0x02) t |= SOURCE_6; if(c6 & 0x02) t |= SOURCE_7; if(c7 & 0x02) t |= SOURCE_8;
-	bits_RF[1] = t;
+	bits_RB[1] = t;
 
 	t = 0;
 	if(c0 & 0x01) t |= SOURCE_1; if(c1 & 0x01) t |= SOURCE_2; if(c2 & 0x01) t |= SOURCE_3; if(c3 & 0x01) t |= SOURCE_4;
 	if(c4 & 0x01) t |= SOURCE_5; if(c5 & 0x01) t |= SOURCE_6; if(c6 & 0x01) t |= SOURCE_7; if(c7 & 0x01) t |= SOURCE_8;
-	bits_RF[0] = t;
+	bits_RB[0] = t;
 	
 	c0 = g[0]; c1 = g[1]; c2 = g[2]; c3 = g[3]; c4 = g[4]; c5 = g[5]; c6 = g[6]; c7 = g[7];
 	
 	t = 0;
 	if(c0 & 0x80) t |= SOURCE_1; if(c1 & 0x80) t |= SOURCE_2; if(c2 & 0x80) t |= SOURCE_3; if(c3 & 0x80) t |= SOURCE_4;
 	if(c4 & 0x80) t |= SOURCE_5; if(c5 & 0x80) t |= SOURCE_6; if(c6 & 0x80) t |= SOURCE_7; if(c7 & 0x80) t |= SOURCE_8;
-	bits_GF[7] = t;
+	bits_GB[7] = t;
 		
 	t = 0;
 	if(c0 & 0x40) t |= SOURCE_1; if(c1 & 0x40) t |= SOURCE_2; if(c2 & 0x40) t |= SOURCE_3; if(c3 & 0x40) t |= SOURCE_4;
 	if(c4 & 0x40) t |= SOURCE_5; if(c5 & 0x40) t |= SOURCE_6; if(c6 & 0x40) t |= SOURCE_7; if(c7 & 0x40) t |= SOURCE_8;
-	bits_GF[6] = t;
+	bits_GB[6] = t;
 		
 	t = 0;
 	if(c0 & 0x20) t |= SOURCE_1; if(c1 & 0x20) t |= SOURCE_2; if(c2 & 0x20) t |= SOURCE_3; if(c3 & 0x20) t |= SOURCE_4;
 	if(c4 & 0x20) t |= SOURCE_5; if(c5 & 0x20) t |= SOURCE_6; if(c6 & 0x20) t |= SOURCE_7; if(c7 & 0x20) t |= SOURCE_8;
-	bits_GF[5] = t;
+	bits_GB[5] = t;
 
 	t = 0;
 	if(c0 & 0x10) t |= SOURCE_1; if(c1 & 0x10) t |= SOURCE_2; if(c2 & 0x10) t |= SOURCE_3; if(c3 & 0x10) t |= SOURCE_4;
 	if(c4 & 0x10) t |= SOURCE_5; if(c5 & 0x10) t |= SOURCE_6; if(c6 & 0x10) t |= SOURCE_7; if(c7 & 0x10) t |= SOURCE_8;
-	bits_GF[4] = t;
+	bits_GB[4] = t;
 
 	t = 0;
 	if(c0 & 0x08) t |= SOURCE_1; if(c1 & 0x08) t |= SOURCE_2; if(c2 & 0x08) t |= SOURCE_3; if(c3 & 0x08) t |= SOURCE_4;
 	if(c4 & 0x08) t |= SOURCE_5; if(c5 & 0x08) t |= SOURCE_6; if(c6 & 0x08) t |= SOURCE_7; if(c7 & 0x08) t |= SOURCE_8;
-	bits_GF[3] = t;
+	bits_GB[3] = t;
 
 	t = 0;
 	if(c0 & 0x04) t |= SOURCE_1; if(c1 & 0x04) t |= SOURCE_2; if(c2 & 0x04) t |= SOURCE_3; if(c3 & 0x04) t |= SOURCE_4;
 	if(c4 & 0x04) t |= SOURCE_5; if(c5 & 0x04) t |= SOURCE_6; if(c6 & 0x04) t |= SOURCE_7; if(c7 & 0x04) t |= SOURCE_8;
-	bits_GF[2] = t;
+	bits_GB[2] = t;
 		
 	t = 0;
 	if(c0 & 0x02) t |= SOURCE_1; if(c1 & 0x02) t |= SOURCE_2; if(c2 & 0x02) t |= SOURCE_3; if(c3 & 0x02) t |= SOURCE_4;
 	if(c4 & 0x02) t |= SOURCE_5; if(c5 & 0x02) t |= SOURCE_6; if(c6 & 0x02) t |= SOURCE_7; if(c7 & 0x02) t |= SOURCE_8;
-	bits_GF[1] = t;
+	bits_GB[1] = t;
 
 	t = 0;
 	if(c0 & 0x01) t |= SOURCE_1; if(c1 & 0x01) t |= SOURCE_2; if(c2 & 0x01) t |= SOURCE_3; if(c3 & 0x01) t |= SOURCE_4;
 	if(c4 & 0x01) t |= SOURCE_5; if(c5 & 0x01) t |= SOURCE_6; if(c6 & 0x01) t |= SOURCE_7; if(c7 & 0x01) t |= SOURCE_8;
-	bits_GF[0] = t;
+	bits_GB[0] = t;
 	
 	c0 = b[0]; c1 = b[1]; c2 = b[2]; c3 = b[3]; c4 = b[4]; c5 = b[5]; c6 = b[6]; c7 = b[7];
 	
 	t = 0;
 	if(c0 & 0x80) t |= SOURCE_1; if(c1 & 0x80) t |= SOURCE_2; if(c2 & 0x80) t |= SOURCE_3; if(c3 & 0x80) t |= SOURCE_4;
 	if(c4 & 0x80) t |= SOURCE_5; if(c5 & 0x80) t |= SOURCE_6; if(c6 & 0x80) t |= SOURCE_7; if(c7 & 0x80) t |= SOURCE_8;
-	bits_BF[7] = t;
+	bits_BB[7] = t;
 		
 	t = 0;
 	if(c0 & 0x40) t |= SOURCE_1; if(c1 & 0x40) t |= SOURCE_2; if(c2 & 0x40) t |= SOURCE_3; if(c3 & 0x40) t |= SOURCE_4;
 	if(c4 & 0x40) t |= SOURCE_5; if(c5 & 0x40) t |= SOURCE_6; if(c6 & 0x40) t |= SOURCE_7; if(c7 & 0x40) t |= SOURCE_8;
-	bits_BF[6] = t;
+	bits_BB[6] = t;
 		
 	t = 0;
 	if(c0 & 0x20) t |= SOURCE_1; if(c1 & 0x20) t |= SOURCE_2; if(c2 & 0x20) t |= SOURCE_3; if(c3 & 0x20) t |= SOURCE_4;
 	if(c4 & 0x20) t |= SOURCE_5; if(c5 & 0x20) t |= SOURCE_6; if(c6 & 0x20) t |= SOURCE_7; if(c7 & 0x20) t |= SOURCE_8;
-	bits_BF[5] = t;
+	bits_BB[5] = t;
 
 	t = 0;
 	if(c0 & 0x10) t |= SOURCE_1; if(c1 & 0x10) t |= SOURCE_2; if(c2 & 0x10) t |= SOURCE_3; if(c3 & 0x10) t |= SOURCE_4;
 	if(c4 & 0x10) t |= SOURCE_5; if(c5 & 0x10) t |= SOURCE_6; if(c6 & 0x10) t |= SOURCE_7; if(c7 & 0x10) t |= SOURCE_8;
-	bits_BF[4] = t;
+	bits_BB[4] = t;
 
 	t = 0;
 	if(c0 & 0x08) t |= SOURCE_1; if(c1 & 0x08) t |= SOURCE_2; if(c2 & 0x08) t |= SOURCE_3; if(c3 & 0x08) t |= SOURCE_4;
 	if(c4 & 0x08) t |= SOURCE_5; if(c5 & 0x08) t |= SOURCE_6; if(c6 & 0x08) t |= SOURCE_7; if(c7 & 0x08) t |= SOURCE_8;
-	bits_BF[3] = t;
+	bits_BB[3] = t;
 
 	t = 0;
 	if(c0 & 0x04) t |= SOURCE_1; if(c1 & 0x04) t |= SOURCE_2; if(c2 & 0x04) t |= SOURCE_3; if(c3 & 0x04) t |= SOURCE_4;
 	if(c4 & 0x04) t |= SOURCE_5; if(c5 & 0x04) t |= SOURCE_6; if(c6 & 0x04) t |= SOURCE_7; if(c7 & 0x04) t |= SOURCE_8;
-	bits_BF[2] = t;
+	bits_BB[2] = t;
 		
 	t = 0;
 	if(c0 & 0x02) t |= SOURCE_1; if(c1 & 0x02) t |= SOURCE_2; if(c2 & 0x02) t |= SOURCE_3; if(c3 & 0x02) t |= SOURCE_4;
 	if(c4 & 0x02) t |= SOURCE_5; if(c5 & 0x02) t |= SOURCE_6; if(c6 & 0x02) t |= SOURCE_7; if(c7 & 0x02) t |= SOURCE_8;
-	bits_BF[1] = t;
+	bits_BB[1] = t;
 
 	t = 0;
 	if(c0 & 0x01) t |= SOURCE_1; if(c1 & 0x01) t |= SOURCE_2; if(c2 & 0x01) t |= SOURCE_3; if(c3 & 0x01) t |= SOURCE_4;
 	if(c4 & 0x01) t |= SOURCE_5; if(c5 & 0x01) t |= SOURCE_6; if(c6 & 0x01) t |= SOURCE_7; if(c7 & 0x01) t |= SOURCE_8;
-	bits_BF[0] = t;
+	bits_BB[0] = t;
 	
 	// swap
 	
-	/*
 	while(blank);
 	while(!blank);
 	bits_RF[7] = bits_RB[7];
@@ -1164,23 +1154,75 @@ void swap() {
 	bits_BF[2] = bits_BB[2];
 	bits_BF[1] = bits_BB[1];
 	bits_BF[0] = bits_BB[0];
-	*/
 }	
 
 //------------------------------------------------------------------------------
 // Initialization
 
 void SetupLEDs() {
+	cli();
+	
+	// Port B is our sink port.
+	PORTB = 0x00;
+	DDRB = 0xFF;
+
+	// Port C is our status port. Status LEDs are on pins 2 and 3.	
+	PORTC = 0x00;
+	DDRC = bit(2) | bit(3);
+
+	// Port D is our source port.	
 	PORTD = 0x00;
 	DDRD = 0xFF;
-	PORT_SINK = SINK_BLUE;
-	PORTB = 0x00;
 
 	timer_callback = bits_red_6;
 	
-	cli();
+	// Set up ADC to read from channel 1, left-adjust the result, and sample in
+	// (14 * 32) = 448 cycles (56 uS @ 8 mhz) - the fastest we can sample and
+	// still get 10-bit resolution.
+	ADMUX  = ADC_CHANNEL | bit(ADLAR);
+	ADCSRA = bit(ADEN) | bit(ADPS2) | bit(ADPS0);
+
+	// Disable analog comparator
+	ACSR = bit(ACD);
+	
+	// Disable all external interrupts.
+	EICRA = 0;
+	EIMSK = 0;
+	PCICR = 0;
+	PCMSK0 = 0;
+	PCMSK1 = 0;
+	PCMSK2 = 0;
+	
+	// Turn off the SPI interface.
+	SPCR = 0;
+	
+	// Turn off the serial interface, which the bootloader leaves on by default.
+	UCSR0A = 0;
+	UCSR0B = 0;
+	
+	// Disable timer 0
+	TCCR0A = 0;
+	TCCR0B = 0;
+
+	// Set timer 1 to tick at full speed and generate overflow interrupts.
 	TIMSK1 =  (1 << TOIE1);
 	TCCR1A = 0;
 	TCCR1B = (1 << CS10);
+	
+	// Disable timer 2
+	TCCR2A = 0;
+	TCCR2B = 0;
+	
+	// Disable watchdog
+	WDTCSR = 0;
+	
+	// Power down all peripherals except timer 1 and the ADC. For whatever
+	// reason, this has to be done last otherwise some of the above settings
+	// don't actually do anything.
+	PRR = bit(PRTWI) | bit(PRTIM2) | bit(PRTIM0) | bit(PRSPI) | bit(PRUSART0);
+
+	// Device configured, kick off the first ADC conversion and enable
+	// interrupts.
+	sbi(ADCSRA,ADSC);
 	sei();
 }

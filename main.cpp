@@ -29,163 +29,20 @@ void testLEDs() {
 }
 
 //---------------------------------------------------------------------------
-// Set up ADC. Default config assumes F_CPU == 8000000
-// We sample at 1000000 / (16*14) = ~4464 hz
-
-#if F_CPU == 8000000
-void SetupADC() {
-	// conversion takes 28 uS
-	ADMUX  = bit(MUX0) | bit(ADLAR);
-	ADCSRA = bit(ADEN) | bit(ADPS2);
-	sbi(ADCSRA,ADSC);
-}	
-#endif
-
-
-void red_test() {
-	static uint16_t timer;
-	
-	const int step = 35;
-	const int speed = 3;
-	
-	timer += speed;
-	uint8_t phase = timer >> 8;
-
-	for(int i = 0; i < 8; i++) {
-		uint8_t t = phase + step * i;
-		r[i] = getGammaSin(t);
-	}
-}	
-
-void green_test() {
-	static uint16_t timer;
-	
-	const int step = 35;
-	const int speed = 1;
-	
-	timer += speed;
-	uint8_t phase = timer >> 8;
-
-	for(int i = 0; i < 8; i++) {
-		uint8_t t = phase + step * i;
-		g[i] = getGammaSin(t);
-	}
-}
-
-void blue_test() {
-	static uint16_t timer;
-	
-	const int step = 35;
-	const int speed = 3;
-	
-	timer += speed;
-	uint8_t phase = timer >> 8;
-
-	for(int i = 0; i < 8; i++) {
-		uint8_t t = phase + step * i;
-		b[i] = getGammaSin(t);
-	}
-}
-
-void audio_test() {
-	r[0] = g[0] = bright1 >> 2;
-	r[1] = g[1] = bright1 >> 2;
-	r[2] = b[2] = bright2;
-	r[3] = g[3] = b[3] = bright2;
-	r[4] = g[4] = b[4] = bright2;
-	r[5] = b[5] = bright2;
-	r[6] = g[6] = bright1 >> 2;
-	r[7] = g[7] = bright1 >> 2;
-}	
 
 void (*pattern_callback)();
 
 int main(void)
 {
-	// Turn off the serial interface, which the bootloader leaves on by default.
-	UCSR0B &= ~(1 << RXEN0);
-	UCSR0B &= ~(1 << TXEN0);
-	PRR = bit(PRTWI) | bit(PRTIM2) | bit(PRTIM0) | bit(PRSPI) | bit(PRUSART0);
-	
-	// Turn on status LEDs
-	
-	DDRC |= bit(2);
-	DDRC |= bit(3);
-	
-	SetupADC();
 	SetupLEDs();
 	
-	pattern_callback = StartupPattern;
+	pattern_callback = RGBWaves;
 	
 	while(1) {
-		/*
-		float t, c;
-		t = led_tick;
-		t /= 4096.0 * 8;
-		t *= 3.14159265 * 2.0;
-		c = 0;
-		for(int i = 0; i < 8; i++) {
-			float x = sin(t + c);
-			x = (x + 1) / 2;
-			x = x*x;
-			//x *= bright1;
-			x *= 255;
-			r[i] = x;
-			c += (3.1415926535 * 2.0) / 8.0;
-		}
-		
-		t = led_tick;
-		t /= 3123.0 * 8;
-		t *= 3.14159265 * 2.0;
-		c = 0;
-		for(int i = 0; i < 8; i++) {
-			float x = sin(t + c);
-			x = (x + 1) / 2;
-			x = x*x;
-			//x *= bright1;
-			x *= 255;
-			g[i] = x;
-			c += (3.1415926535 * 2.0) / 8.0;
-		}
-
-		t = led_tick;
-		t /= 2712.0 * 8;
-		t *= 3.14159265 * 2.0;
-		c = 0;
-		for(int i = 0; i < 8; i++) {
-			float x = sin(t + c);
-			x = (x + 1) / 2;
-			x = x*x;
-			//x *= bright1;
-			x *= 255;
-			b[i] = x;
-			c += (3.1415926535 * 2.0) / 8.0;
-		}
-		swap();
-		*/
 		pattern_callback();
+		//sbi(PORTC,3);
 		swap();
-		/*
-		r[0] = g[0] = b[0] = 1;
-		r[1] = g[1] = b[1] = 1;
-		r[2] = g[2] = b[2] = 1;
-		r[3] = g[3] = b[3] = 1;
-		r[4] = g[4] = b[4] = 1;
-		r[5] = g[5] = b[5] = 1;
-		r[6] = g[6] = b[6] = 1;
-		r[7] = g[7] = b[7] = 1;
-		swap();
-		r[0] = g[0] = b[0] = 2;
-		r[1] = g[1] = b[1] = 2;
-		r[2] = g[2] = b[2] = 2;
-		r[3] = g[3] = b[3] = 2;
-		r[4] = g[4] = b[4] = 2;
-		r[5] = g[5] = b[5] = 2;
-		r[6] = g[6] = b[6] = 2;
-		r[7] = g[7] = b[7] = 2;
-		swap();
-		*/
-		PORTC ^= bit(3);
+		//cbi(PORTC,3);
 		//_delay_ms(1);
 	}		
 }
