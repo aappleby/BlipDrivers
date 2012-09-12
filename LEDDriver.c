@@ -1019,151 +1019,211 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 }
 
 //------------------------------------------------------------------------------
-// Framebuffer conversion
+// Converts our 8-pixel framebuffer from rgb values to bit planes. If you think
+// of each color channel as being an 8x8 matrix of bits, this is basically a
+// transpose of that matrix.
 
-void swapRed() {
-	uint8_t c0 = r[0], c1 = r[1], c2 = r[2], c3 = r[3], c4 = r[4], c5 = r[5], c6 = r[6], c7 = r[7];
-	uint8_t t = 0;
+// The compiler generates incredibly dumb code for this - the assembly version
+// is almost twice as fast.
+
+// Display pixel order is hardcoded for prototype 3, which has its pixels
+// reordered for routing reasons. Change the constants to the 'ori'
+// instructions for later boards.
+
+__attribute__((naked)) void swap() {
+	asm("wait_for_blank_low:");
+	asm("lds r18, blank");
+	asm("tst r18");
+	asm("brne wait_for_blank_low");
+
+	asm("wait_for_blank_high:");
+	asm("lds r18, blank");
+	asm("tst r18");
+	asm("breq wait_for_blank_high");
 	
-	if(c0 & 0x01) t |= SOURCE_1; if(c1 & 0x01) t |= SOURCE_2; if(c2 & 0x01) t |= SOURCE_3; if(c3 & 0x01) t |= SOURCE_4;
-	if(c4 & 0x01) t |= SOURCE_5; if(c5 & 0x01) t |= SOURCE_6; if(c6 & 0x01) t |= SOURCE_7; if(c7 & 0x01) t |= SOURCE_8;
-	bits_RF[0] = t;
+	sbi(PORTC,3);
 	
-	t = 0;
-	if(c0 & 0x02) t |= SOURCE_1; if(c1 & 0x02) t |= SOURCE_2; if(c2 & 0x02) t |= SOURCE_3; if(c3 & 0x02) t |= SOURCE_4;
-	if(c4 & 0x02) t |= SOURCE_5; if(c5 & 0x02) t |= SOURCE_6; if(c6 & 0x02) t |= SOURCE_7; if(c7 & 0x02) t |= SOURCE_8;
-	bits_RF[1] = t;
+	asm("lds r20, r + 0"); asm("lds r21, r + 1"); asm("lds r22, r + 2"); asm("lds r23, r + 3");
+	asm("lds r24, r + 4"); asm("lds r25, r + 5"); asm("lds r26, r + 6"); asm("lds r27, r + 7");
 
-	t = 0;
-	if(c0 & 0x04) t |= SOURCE_1; if(c1 & 0x04) t |= SOURCE_2; if(c2 & 0x04) t |= SOURCE_3; if(c3 & 0x04) t |= SOURCE_4;
-	if(c4 & 0x04) t |= SOURCE_5; if(c5 & 0x04) t |= SOURCE_6; if(c6 & 0x04) t |= SOURCE_7; if(c7 & 0x04) t |= SOURCE_8;
-	bits_RF[2] = t;
-
-	t = 0;
-	if(c0 & 0x08) t |= SOURCE_1; if(c1 & 0x08) t |= SOURCE_2; if(c2 & 0x08) t |= SOURCE_3; if(c3 & 0x08) t |= SOURCE_4;
-	if(c4 & 0x08) t |= SOURCE_5; if(c5 & 0x08) t |= SOURCE_6; if(c6 & 0x08) t |= SOURCE_7; if(c7 & 0x08) t |= SOURCE_8;
-	bits_RF[3] = t;
-
-	t = 0;
-	if(c0 & 0x10) t |= SOURCE_1; if(c1 & 0x10) t |= SOURCE_2; if(c2 & 0x10) t |= SOURCE_3; if(c3 & 0x10) t |= SOURCE_4;
-	if(c4 & 0x10) t |= SOURCE_5; if(c5 & 0x10) t |= SOURCE_6; if(c6 & 0x10) t |= SOURCE_7; if(c7 & 0x10) t |= SOURCE_8;
-	bits_RF[4] = t;
-
-	t = 0;
-	if(c0 & 0x20) t |= SOURCE_1; if(c1 & 0x20) t |= SOURCE_2; if(c2 & 0x20) t |= SOURCE_3; if(c3 & 0x20) t |= SOURCE_4;
-	if(c4 & 0x20) t |= SOURCE_5; if(c5 & 0x20) t |= SOURCE_6; if(c6 & 0x20) t |= SOURCE_7; if(c7 & 0x20) t |= SOURCE_8;
-	bits_RF[5] = t;
-
-	t = 0;
-	if(c0 & 0x40) t |= SOURCE_1; if(c1 & 0x40) t |= SOURCE_2; if(c2 & 0x40) t |= SOURCE_3; if(c3 & 0x40) t |= SOURCE_4;
-	if(c4 & 0x40) t |= SOURCE_5; if(c5 & 0x40) t |= SOURCE_6; if(c6 & 0x40) t |= SOURCE_7; if(c7 & 0x40) t |= SOURCE_8;
-	bits_RF[6] = t;
-		
-	t = 0;	
-	if(c0 & 0x80) t |= SOURCE_1; if(c1 & 0x80) t |= SOURCE_2; if(c2 & 0x80) t |= SOURCE_3; if(c3 & 0x80) t |= SOURCE_4;
-	if(c4 & 0x80) t |= SOURCE_5; if(c5 & 0x80) t |= SOURCE_6; if(c6 & 0x80) t |= SOURCE_7; if(c7 & 0x80) t |= SOURCE_8;
-	bits_RF[7] = t;
-}	
-
-void swapGreen() {
-	uint8_t c0 = g[0], c1 = g[1], c2 = g[2], c3 = g[3], c4 = g[4], c5 = g[5], c6 = g[6], c7 = g[7];
-	uint8_t t = 0;
-		
-	t = 0;
-	if(c0 & 0x01) t |= SOURCE_1; if(c1 & 0x01) t |= SOURCE_2; if(c2 & 0x01) t |= SOURCE_3; if(c3 & 0x01) t |= SOURCE_4;
-	if(c4 & 0x01) t |= SOURCE_5; if(c5 & 0x01) t |= SOURCE_6; if(c6 & 0x01) t |= SOURCE_7; if(c7 & 0x01) t |= SOURCE_8;
-	bits_GF[0] = t;
+	asm("clr r18");
+	asm("sbrc r20, 0"); asm("ori r18, 0x02"); asm("sbrc r21, 0"); asm("ori r18, 0x04");
+	asm("sbrc r22, 0"); asm("ori r18, 0x01"); asm("sbrc r23, 0"); asm("ori r18, 0x08");
+	asm("sbrc r24, 0"); asm("ori r18, 0x40"); asm("sbrc r25, 0"); asm("ori r18, 0x10");
+	asm("sbrc r26, 0"); asm("ori r18, 0x20"); asm("sbrc r27, 0"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 0, r18");
 	
-	t = 0;
-	if(c0 & 0x02) t |= SOURCE_1; if(c1 & 0x02) t |= SOURCE_2; if(c2 & 0x02) t |= SOURCE_3; if(c3 & 0x02) t |= SOURCE_4;
-	if(c4 & 0x02) t |= SOURCE_5; if(c5 & 0x02) t |= SOURCE_6; if(c6 & 0x02) t |= SOURCE_7; if(c7 & 0x02) t |= SOURCE_8;
-	bits_GF[1] = t;
+	asm("clr r18");
+	asm("sbrc r20, 1"); asm("ori r18, 0x02"); asm("sbrc r21, 1"); asm("ori r18, 0x04");
+	asm("sbrc r22, 1"); asm("ori r18, 0x01"); asm("sbrc r23, 1"); asm("ori r18, 0x08");
+	asm("sbrc r24, 1"); asm("ori r18, 0x40"); asm("sbrc r25, 1"); asm("ori r18, 0x10");
+	asm("sbrc r26, 1"); asm("ori r18, 0x20"); asm("sbrc r27, 1"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 1, r18");
 	
-	t = 0;
-	if(c0 & 0x04) t |= SOURCE_1; if(c1 & 0x04) t |= SOURCE_2; if(c2 & 0x04) t |= SOURCE_3; if(c3 & 0x04) t |= SOURCE_4;
-	if(c4 & 0x04) t |= SOURCE_5; if(c5 & 0x04) t |= SOURCE_6; if(c6 & 0x04) t |= SOURCE_7; if(c7 & 0x04) t |= SOURCE_8;
-	bits_GF[2] = t;
-
-	t = 0;
-	if(c0 & 0x08) t |= SOURCE_1; if(c1 & 0x08) t |= SOURCE_2; if(c2 & 0x08) t |= SOURCE_3; if(c3 & 0x08) t |= SOURCE_4;
-	if(c4 & 0x08) t |= SOURCE_5; if(c5 & 0x08) t |= SOURCE_6; if(c6 & 0x08) t |= SOURCE_7; if(c7 & 0x08) t |= SOURCE_8;
-	bits_GF[3] = t;
-
-	t = 0;
-	if(c0 & 0x10) t |= SOURCE_1; if(c1 & 0x10) t |= SOURCE_2; if(c2 & 0x10) t |= SOURCE_3; if(c3 & 0x10) t |= SOURCE_4;
-	if(c4 & 0x10) t |= SOURCE_5; if(c5 & 0x10) t |= SOURCE_6; if(c6 & 0x10) t |= SOURCE_7; if(c7 & 0x10) t |= SOURCE_8;
-	bits_GF[4] = t;
-
-	t = 0;
-	if(c0 & 0x20) t |= SOURCE_1; if(c1 & 0x20) t |= SOURCE_2; if(c2 & 0x20) t |= SOURCE_3; if(c3 & 0x20) t |= SOURCE_4;
-	if(c4 & 0x20) t |= SOURCE_5; if(c5 & 0x20) t |= SOURCE_6; if(c6 & 0x20) t |= SOURCE_7; if(c7 & 0x20) t |= SOURCE_8;
-	bits_GF[5] = t;
-		
-	t = 0;
-	if(c0 & 0x40) t |= SOURCE_1; if(c1 & 0x40) t |= SOURCE_2; if(c2 & 0x40) t |= SOURCE_3; if(c3 & 0x40) t |= SOURCE_4;
-	if(c4 & 0x40) t |= SOURCE_5; if(c5 & 0x40) t |= SOURCE_6; if(c6 & 0x40) t |= SOURCE_7; if(c7 & 0x40) t |= SOURCE_8;
-	bits_GF[6] = t;
+	asm("clr r18");
+	asm("sbrc r20, 2"); asm("ori r18, 0x02"); asm("sbrc r21, 2"); asm("ori r18, 0x04");
+	asm("sbrc r22, 2"); asm("ori r18, 0x01"); asm("sbrc r23, 2"); asm("ori r18, 0x08");
+	asm("sbrc r24, 2"); asm("ori r18, 0x40"); asm("sbrc r25, 2"); asm("ori r18, 0x10");
+	asm("sbrc r26, 2"); asm("ori r18, 0x20"); asm("sbrc r27, 2"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 2, r18");
 	
-	t = 0;	
-	if(c0 & 0x80) t |= SOURCE_1; if(c1 & 0x80) t |= SOURCE_2; if(c2 & 0x80) t |= SOURCE_3; if(c3 & 0x80) t |= SOURCE_4;
-	if(c4 & 0x80) t |= SOURCE_5; if(c5 & 0x80) t |= SOURCE_6; if(c6 & 0x80) t |= SOURCE_7; if(c7 & 0x80) t |= SOURCE_8;
-	bits_GF[7] = t;
+	asm("clr r18");
+	asm("sbrc r20, 3"); asm("ori r18, 0x02"); asm("sbrc r21, 3"); asm("ori r18, 0x04");
+	asm("sbrc r22, 3"); asm("ori r18, 0x01"); asm("sbrc r23, 3"); asm("ori r18, 0x08");
+	asm("sbrc r24, 3"); asm("ori r18, 0x40"); asm("sbrc r25, 3"); asm("ori r18, 0x10");
+	asm("sbrc r26, 3"); asm("ori r18, 0x20"); asm("sbrc r27, 3"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 3, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 4"); asm("ori r18, 0x02"); asm("sbrc r21, 4"); asm("ori r18, 0x04");
+	asm("sbrc r22, 4"); asm("ori r18, 0x01"); asm("sbrc r23, 4"); asm("ori r18, 0x08");
+	asm("sbrc r24, 4"); asm("ori r18, 0x40"); asm("sbrc r25, 4"); asm("ori r18, 0x10");
+	asm("sbrc r26, 4"); asm("ori r18, 0x20"); asm("sbrc r27, 4"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 4, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 5"); asm("ori r18, 0x02"); asm("sbrc r21, 5"); asm("ori r18, 0x04");
+	asm("sbrc r22, 5"); asm("ori r18, 0x01"); asm("sbrc r23, 5"); asm("ori r18, 0x08");
+	asm("sbrc r24, 5"); asm("ori r18, 0x40"); asm("sbrc r25, 5"); asm("ori r18, 0x10");
+	asm("sbrc r26, 5"); asm("ori r18, 0x20"); asm("sbrc r27, 5"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 5, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 6"); asm("ori r18, 0x02"); asm("sbrc r21, 6"); asm("ori r18, 0x04");
+	asm("sbrc r22, 6"); asm("ori r18, 0x01"); asm("sbrc r23, 6"); asm("ori r18, 0x08");
+	asm("sbrc r24, 6"); asm("ori r18, 0x40"); asm("sbrc r25, 6"); asm("ori r18, 0x10");
+	asm("sbrc r26, 6"); asm("ori r18, 0x20"); asm("sbrc r27, 6"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 6, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 7"); asm("ori r18, 0x02"); asm("sbrc r21, 7"); asm("ori r18, 0x04");
+	asm("sbrc r22, 7"); asm("ori r18, 0x01"); asm("sbrc r23, 7"); asm("ori r18, 0x08");
+	asm("sbrc r24, 7"); asm("ori r18, 0x40"); asm("sbrc r25, 7"); asm("ori r18, 0x10");
+	asm("sbrc r26, 7"); asm("ori r18, 0x20"); asm("sbrc r27, 7"); asm("ori r18, 0x80");
+	asm("sts bits_RF + 7, r18");
+	
+	asm("lds r20, g + 0"); asm("lds r21, g + 1"); asm("lds r22, g + 2"); asm("lds r23, g + 3");
+	asm("lds r24, g + 4"); asm("lds r25, g + 5"); asm("lds r26, g + 6"); asm("lds r27, g + 7");
+
+	asm("clr r18");
+	asm("sbrc r20, 0"); asm("ori r18, 0x02"); asm("sbrc r21, 0"); asm("ori r18, 0x04");
+	asm("sbrc r22, 0"); asm("ori r18, 0x01"); asm("sbrc r23, 0"); asm("ori r18, 0x08");
+	asm("sbrc r24, 0"); asm("ori r18, 0x40"); asm("sbrc r25, 0"); asm("ori r18, 0x10");
+	asm("sbrc r26, 0"); asm("ori r18, 0x20"); asm("sbrc r27, 0"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 0, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 1"); asm("ori r18, 0x02"); asm("sbrc r21, 1"); asm("ori r18, 0x04");
+	asm("sbrc r22, 1"); asm("ori r18, 0x01"); asm("sbrc r23, 1"); asm("ori r18, 0x08");
+	asm("sbrc r24, 1"); asm("ori r18, 0x40"); asm("sbrc r25, 1"); asm("ori r18, 0x10");
+	asm("sbrc r26, 1"); asm("ori r18, 0x20"); asm("sbrc r27, 1"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 1, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 2"); asm("ori r18, 0x02"); asm("sbrc r21, 2"); asm("ori r18, 0x04");
+	asm("sbrc r22, 2"); asm("ori r18, 0x01"); asm("sbrc r23, 2"); asm("ori r18, 0x08");
+	asm("sbrc r24, 2"); asm("ori r18, 0x40"); asm("sbrc r25, 2"); asm("ori r18, 0x10");
+	asm("sbrc r26, 2"); asm("ori r18, 0x20"); asm("sbrc r27, 2"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 2, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 3"); asm("ori r18, 0x02"); asm("sbrc r21, 3"); asm("ori r18, 0x04");
+	asm("sbrc r22, 3"); asm("ori r18, 0x01"); asm("sbrc r23, 3"); asm("ori r18, 0x08");
+	asm("sbrc r24, 3"); asm("ori r18, 0x40"); asm("sbrc r25, 3"); asm("ori r18, 0x10");
+	asm("sbrc r26, 3"); asm("ori r18, 0x20"); asm("sbrc r27, 3"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 3, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 4"); asm("ori r18, 0x02"); asm("sbrc r21, 4"); asm("ori r18, 0x04");
+	asm("sbrc r22, 4"); asm("ori r18, 0x01"); asm("sbrc r23, 4"); asm("ori r18, 0x08");
+	asm("sbrc r24, 4"); asm("ori r18, 0x40"); asm("sbrc r25, 4"); asm("ori r18, 0x10");
+	asm("sbrc r26, 4"); asm("ori r18, 0x20"); asm("sbrc r27, 4"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 4, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 5"); asm("ori r18, 0x02"); asm("sbrc r21, 5"); asm("ori r18, 0x04");
+	asm("sbrc r22, 5"); asm("ori r18, 0x01"); asm("sbrc r23, 5"); asm("ori r18, 0x08");
+	asm("sbrc r24, 5"); asm("ori r18, 0x40"); asm("sbrc r25, 5"); asm("ori r18, 0x10");
+	asm("sbrc r26, 5"); asm("ori r18, 0x20"); asm("sbrc r27, 5"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 5, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 6"); asm("ori r18, 0x02"); asm("sbrc r21, 6"); asm("ori r18, 0x04");
+	asm("sbrc r22, 6"); asm("ori r18, 0x01"); asm("sbrc r23, 6"); asm("ori r18, 0x08");
+	asm("sbrc r24, 6"); asm("ori r18, 0x40"); asm("sbrc r25, 6"); asm("ori r18, 0x10");
+	asm("sbrc r26, 6"); asm("ori r18, 0x20"); asm("sbrc r27, 6"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 6, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 7"); asm("ori r18, 0x02"); asm("sbrc r21, 7"); asm("ori r18, 0x04");
+	asm("sbrc r22, 7"); asm("ori r18, 0x01"); asm("sbrc r23, 7"); asm("ori r18, 0x08");
+	asm("sbrc r24, 7"); asm("ori r18, 0x40"); asm("sbrc r25, 7"); asm("ori r18, 0x10");
+	asm("sbrc r26, 7"); asm("ori r18, 0x20"); asm("sbrc r27, 7"); asm("ori r18, 0x80");
+	asm("sts bits_GF + 7, r18");
+	
+	asm("lds r20, b + 0"); asm("lds r21, b + 1"); asm("lds r22, b + 2"); asm("lds r23, b + 3");
+	asm("lds r24, b + 4"); asm("lds r25, b + 5"); asm("lds r26, b + 6"); asm("lds r27, b + 7");
+
+	asm("clr r18");
+	asm("sbrc r20, 0"); asm("ori r18, 0x02"); asm("sbrc r21, 0"); asm("ori r18, 0x04");
+	asm("sbrc r22, 0"); asm("ori r18, 0x01"); asm("sbrc r23, 0"); asm("ori r18, 0x08");
+	asm("sbrc r24, 0"); asm("ori r18, 0x40"); asm("sbrc r25, 0"); asm("ori r18, 0x10");
+	asm("sbrc r26, 0"); asm("ori r18, 0x20"); asm("sbrc r27, 0"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 0, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 1"); asm("ori r18, 0x02"); asm("sbrc r21, 1"); asm("ori r18, 0x04");
+	asm("sbrc r22, 1"); asm("ori r18, 0x01"); asm("sbrc r23, 1"); asm("ori r18, 0x08");
+	asm("sbrc r24, 1"); asm("ori r18, 0x40"); asm("sbrc r25, 1"); asm("ori r18, 0x10");
+	asm("sbrc r26, 1"); asm("ori r18, 0x20"); asm("sbrc r27, 1"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 1, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 2"); asm("ori r18, 0x02"); asm("sbrc r21, 2"); asm("ori r18, 0x04");
+	asm("sbrc r22, 2"); asm("ori r18, 0x01"); asm("sbrc r23, 2"); asm("ori r18, 0x08");
+	asm("sbrc r24, 2"); asm("ori r18, 0x40"); asm("sbrc r25, 2"); asm("ori r18, 0x10");
+	asm("sbrc r26, 2"); asm("ori r18, 0x20"); asm("sbrc r27, 2"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 2, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 3"); asm("ori r18, 0x02"); asm("sbrc r21, 3"); asm("ori r18, 0x04");
+	asm("sbrc r22, 3"); asm("ori r18, 0x01"); asm("sbrc r23, 3"); asm("ori r18, 0x08");
+	asm("sbrc r24, 3"); asm("ori r18, 0x40"); asm("sbrc r25, 3"); asm("ori r18, 0x10");
+	asm("sbrc r26, 3"); asm("ori r18, 0x20"); asm("sbrc r27, 3"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 3, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 4"); asm("ori r18, 0x02"); asm("sbrc r21, 4"); asm("ori r18, 0x04");
+	asm("sbrc r22, 4"); asm("ori r18, 0x01"); asm("sbrc r23, 4"); asm("ori r18, 0x08");
+	asm("sbrc r24, 4"); asm("ori r18, 0x40"); asm("sbrc r25, 4"); asm("ori r18, 0x10");
+	asm("sbrc r26, 4"); asm("ori r18, 0x20"); asm("sbrc r27, 4"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 4, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 5"); asm("ori r18, 0x02"); asm("sbrc r21, 5"); asm("ori r18, 0x04");
+	asm("sbrc r22, 5"); asm("ori r18, 0x01"); asm("sbrc r23, 5"); asm("ori r18, 0x08");
+	asm("sbrc r24, 5"); asm("ori r18, 0x40"); asm("sbrc r25, 5"); asm("ori r18, 0x10");
+	asm("sbrc r26, 5"); asm("ori r18, 0x20"); asm("sbrc r27, 5"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 5, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 6"); asm("ori r18, 0x02"); asm("sbrc r21, 6"); asm("ori r18, 0x04");
+	asm("sbrc r22, 6"); asm("ori r18, 0x01"); asm("sbrc r23, 6"); asm("ori r18, 0x08");
+	asm("sbrc r24, 6"); asm("ori r18, 0x40"); asm("sbrc r25, 6"); asm("ori r18, 0x10");
+	asm("sbrc r26, 6"); asm("ori r18, 0x20"); asm("sbrc r27, 6"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 6, r18");
+	
+	asm("clr r18");
+	asm("sbrc r20, 7"); asm("ori r18, 0x02"); asm("sbrc r21, 7"); asm("ori r18, 0x04");
+	asm("sbrc r22, 7"); asm("ori r18, 0x01"); asm("sbrc r23, 7"); asm("ori r18, 0x08");
+	asm("sbrc r24, 7"); asm("ori r18, 0x40"); asm("sbrc r25, 7"); asm("ori r18, 0x10");
+	asm("sbrc r26, 7"); asm("ori r18, 0x20"); asm("sbrc r27, 7"); asm("ori r18, 0x80");
+	asm("sts bits_BF + 7, r18");
+	
+	cbi(PORTC,3);
+	
+	asm("ret");
 }
-
-void swapBlue() {
-	uint8_t c0 = b[0], c1 = b[1], c2 = b[2], c3 = b[3], c4 = b[4], c5 = b[5], c6 = b[6], c7 = b[7];
-	uint8_t t = 0;
-
-	t = 0;
-	if(c0 & 0x01) t |= SOURCE_1; if(c1 & 0x01) t |= SOURCE_2; if(c2 & 0x01) t |= SOURCE_3; if(c3 & 0x01) t |= SOURCE_4;
-	if(c4 & 0x01) t |= SOURCE_5; if(c5 & 0x01) t |= SOURCE_6; if(c6 & 0x01) t |= SOURCE_7; if(c7 & 0x01) t |= SOURCE_8;
-	bits_BF[0] = t;
-
-	t = 0;
-	if(c0 & 0x02) t |= SOURCE_1; if(c1 & 0x02) t |= SOURCE_2; if(c2 & 0x02) t |= SOURCE_3; if(c3 & 0x02) t |= SOURCE_4;
-	if(c4 & 0x02) t |= SOURCE_5; if(c5 & 0x02) t |= SOURCE_6; if(c6 & 0x02) t |= SOURCE_7; if(c7 & 0x02) t |= SOURCE_8;
-	bits_BF[1] = t;
-
-	t = 0;
-	if(c0 & 0x04) t |= SOURCE_1; if(c1 & 0x04) t |= SOURCE_2; if(c2 & 0x04) t |= SOURCE_3; if(c3 & 0x04) t |= SOURCE_4;
-	if(c4 & 0x04) t |= SOURCE_5; if(c5 & 0x04) t |= SOURCE_6; if(c6 & 0x04) t |= SOURCE_7; if(c7 & 0x04) t |= SOURCE_8;
-	bits_BF[2] = t;
-		
-	t = 0;
-	if(c0 & 0x08) t |= SOURCE_1; if(c1 & 0x08) t |= SOURCE_2; if(c2 & 0x08) t |= SOURCE_3; if(c3 & 0x08) t |= SOURCE_4;
-	if(c4 & 0x08) t |= SOURCE_5; if(c5 & 0x08) t |= SOURCE_6; if(c6 & 0x08) t |= SOURCE_7; if(c7 & 0x08) t |= SOURCE_8;
-	bits_BF[3] = t;
-
-	t = 0;
-	if(c0 & 0x10) t |= SOURCE_1; if(c1 & 0x10) t |= SOURCE_2; if(c2 & 0x10) t |= SOURCE_3; if(c3 & 0x10) t |= SOURCE_4;
-	if(c4 & 0x10) t |= SOURCE_5; if(c5 & 0x10) t |= SOURCE_6; if(c6 & 0x10) t |= SOURCE_7; if(c7 & 0x10) t |= SOURCE_8;
-	bits_BF[4] = t;
-
-	t = 0;
-	if(c0 & 0x20) t |= SOURCE_1; if(c1 & 0x20) t |= SOURCE_2; if(c2 & 0x20) t |= SOURCE_3; if(c3 & 0x20) t |= SOURCE_4;
-	if(c4 & 0x20) t |= SOURCE_5; if(c5 & 0x20) t |= SOURCE_6; if(c6 & 0x20) t |= SOURCE_7; if(c7 & 0x20) t |= SOURCE_8;
-	bits_BF[5] = t;
-
-	t = 0;
-	if(c0 & 0x40) t |= SOURCE_1; if(c1 & 0x40) t |= SOURCE_2; if(c2 & 0x40) t |= SOURCE_3; if(c3 & 0x40) t |= SOURCE_4;
-	if(c4 & 0x40) t |= SOURCE_5; if(c5 & 0x40) t |= SOURCE_6; if(c6 & 0x40) t |= SOURCE_7; if(c7 & 0x40) t |= SOURCE_8;
-	bits_BF[6] = t;		
-
-	t = 0;
-	if(c0 & 0x80) t |= SOURCE_1; if(c1 & 0x80) t |= SOURCE_2; if(c2 & 0x80) t |= SOURCE_3; if(c3 & 0x80) t |= SOURCE_4;
-	if(c4 & 0x80) t |= SOURCE_5; if(c5 & 0x80) t |= SOURCE_6; if(c6 & 0x80) t |= SOURCE_7; if(c7 & 0x80) t |= SOURCE_8;
-	bits_BF[7] = t;		
-}	
-
-
-__attribute__((noinline)) void swap() {
-	while(blank);
-	while(!blank);
-
-	swapRed();
-	swapGreen();
-	swapBlue();
-}	
 
 //------------------------------------------------------------------------------
 // Initialization
