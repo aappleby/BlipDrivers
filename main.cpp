@@ -1,8 +1,6 @@
-#include "Defines.h"
 #include "Patterns.h"
 
 #include "LEDDriver.h"
-#include "Tables.h"
 
 #include <avr/io.h>
 #include <avr/pgmspace.h>
@@ -34,10 +32,19 @@ void (*pattern_callback)();
 
 int main(void)
 {
+	/*
+	DDRD = 0xFF;
+	DDRB = 0xFF;
+	
+	while(1) {
+		PORTD = 0xFF;
+		PORTB = 0xFE;
+	}
+	*/		
+	
 	SetupLEDs();
 	
-	pattern_callback = audio_test;
-	
+	pattern_callback = red_test;
 	while(1) {
 		pattern_callback();
 		//sbi(PORTC,3);

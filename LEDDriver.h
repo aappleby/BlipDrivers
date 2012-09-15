@@ -9,12 +9,16 @@ extern "C" {
 
 void SetupLEDs();
 
-extern uint8_t r[8];
-extern uint8_t g[8];
-extern uint8_t b[8];
-void swap();
+struct Pixel {
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+};
 
-extern volatile uint8_t blank;
+extern struct Pixel pixels[8];
+void swap();
+void clear();
+
 extern uint16_t led_tick; // 4.096 khz
 
 extern uint8_t bright1;
@@ -25,5 +29,14 @@ extern uint16_t tmax2;
 #ifdef __cplusplus
 }
 #endif
+
+inline uint8_t fade (uint8_t a, uint8_t b) {
+	return (a * b) >> 8;
+}
+
+inline uint8_t crossfade (uint8_t a, uint8_t b, uint8_t alpha) {
+	return (a*alpha + b*(255-alpha)) >> 8;
+}	
+
 
 #endif

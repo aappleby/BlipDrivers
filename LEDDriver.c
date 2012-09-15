@@ -1,8 +1,67 @@
 #include "LEDDriver.h"
-#include "Defines.h"
+
+#ifndef F_CPU
+#define F_CPU 8000000
+#endif
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
+
+//-----------------------------------------------------------------------------
+// board configs
+
+/*
+// prototype 2 settings
+#define PORT_SOURCE PORTD
+#define PORT_SINK DDRB
+#define SINK_GREEN 0x0C
+#define SINK_RED 0x12
+#define SINK_BLUE 0x01;
+*/
+
+// prototype 3 settings
+#define DIR_SOURCE  DDRD
+#define DIR_SINK    DDRB
+#define DIR_STATUS  DDRC
+
+#define PORT_SOURCE PORTD
+#define PORT_SINK   PORTB
+#define PORT_STATUS PORTC
+
+#define SOURCE_1 0x02
+#define SOURCE_2 0x04
+#define SOURCE_3 0x01
+#define SOURCE_4 0x08
+#define SOURCE_5 0x40
+#define SOURCE_6 0x10
+#define SOURCE_7 0x20
+#define SOURCE_8 0x80
+
+#define ADC_CHANNEL 1
+
+#define SINK_RED 0x7D   // (~((1 << 1) | (1 << 7)))
+#define SINK_GREEN 0xB3 // (~((1 << 2) | (1 << 3) | (1 << 6)))
+#define SINK_BLUE 0xFE  // (~((1 << 0)))
+
+#define bit(A)   (1 << A)
+#define sbi(p,b) { p |= (unsigned char)bit(b); }
+#define cbi(p,b) { p &= (unsigned char)~bit(b); }
+#define tbi(p,b) { p ^= (unsigned char)bit(b); }
+#define gbi(p,b) (p & (unsigned char)bit(b))
+
+#define lo8(A) (((uint16_t)A) & 0xFF)
+#define hi8(A) (((uint16_t)A) >> 8)
+
+//-----------------------------------------------------------------------------
+// audio processing configs
+
+#define TRIG1_CLAMP  60
+#define BRIGHT1_UP   (65535 / 30)
+#define BRIGHT1_DOWN (65535 / 300)
+
+#define TRIG2_CLAMP  60
+#define BRIGHT2_UP   (65535 / 40)
+#define BRIGHT2_DOWN (65535 / 700)
 
 //-----------------------------------------------------------------------------
 
@@ -11,12 +70,16 @@ uint8_t bits_RF[8];
 uint8_t bits_GF[8];
 uint8_t bits_BF[8];
 
+/*
 uint8_t r[8];
 uint8_t g[8];
 uint8_t b[8];
+*/
+
+struct Pixel pixels[8];
 
 // Blanking interval
-volatile uint8_t blank;
+uint8_t blank;
 
 // PWM cycle tick, 4.096 kilohertz.
 uint16_t led_tick;
@@ -186,8 +249,8 @@ __attribute__((naked)) void bits_red_6() {
 		// sample -= accumD;
 		// accumD += (sample >> DCFILTER);
 
-		asm("lds r28, %0" : : "" (ADCL) );
-		asm("lds r29, %0" : : "" (ADCH) );
+		asm("lds r28, %0" : : "X" (ADCL) );
+		asm("lds r29, %0" : : "X" (ADCH) );
 		asm("lds r30, accumD + 0");
 		asm("lds r31, accumD + 1");
 	
@@ -355,8 +418,8 @@ __attribute__((naked)) void bits_red_6() {
 	// set next timeout, 6 cycles
 	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6R)) );
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6R)) );
-	asm("sts %0, r31" : : "" (TCNT1H));
-	asm("sts %0, r30" : : "" (TCNT1L));
+	asm("sts %0, r31" : : "X" (TCNT1H));
+	asm("sts %0, r30" : : "X" (TCNT1L));
 
 	// send 20.0 uS pulse
 	{
@@ -386,8 +449,8 @@ __attribute__((naked)) void bits_red_7() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7R)) );
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7R)) );
-	asm("sts %0, r31" : : "" (TCNT1H));
-	asm("sts %0, r30" : : "" (TCNT1L));
+	asm("sts %0, r31" : : "X" (TCNT1H));
+	asm("sts %0, r30" : : "X" (TCNT1L));
 
 	// send 40.0 uS pulse
 	{
@@ -626,8 +689,8 @@ __attribute__((naked)) void bits_green_6() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6G)) );
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6G)) );
-	asm("sts %0, r31" : : "" (TCNT1H));
-	asm("sts %0, r30" : : "" (TCNT1L));
+	asm("sts %0, r31" : : "X" (TCNT1H));
+	asm("sts %0, r30" : : "X" (TCNT1L));
 	
 	// send 20.0 uS pulse
 	{
@@ -655,8 +718,8 @@ __attribute__((naked)) void bits_green_7() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7G)) );
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7G)) );
-	asm("sts %0, r31" : : "" (TCNT1H));
-	asm("sts %0, r30" : : "" (TCNT1L));
+	asm("sts %0, r31" : : "X" (TCNT1H));
+	asm("sts %0, r30" : : "X" (TCNT1L));
 	
 	// send 40.0 uS pulse
 	{
@@ -942,8 +1005,8 @@ __attribute__((naked)) void bits_blue_6() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6B)) );
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6B)) );
-	asm("sts %0, r31" : : "" (TCNT1H));
-	asm("sts %0, r30" : : "" (TCNT1L));
+	asm("sts %0, r31" : : "X" (TCNT1H));
+	asm("sts %0, r30" : : "X" (TCNT1L));
 	
 	// send 20.0 uS pulse
 	{
@@ -975,8 +1038,8 @@ __attribute__((naked)) void bits_blue_7() {
 	// 6 cycles
 	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7B)) );
 	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7B)) );
-	asm("sts %0, r31" : : "" (TCNT1H));
-	asm("sts %0, r30" : : "" (TCNT1L));
+	asm("sts %0, r31" : : "X" (TCNT1H));
+	asm("sts %0, r30" : : "X" (TCNT1L));
 	
 	// send 40.0 uS pulse
 	{
@@ -989,9 +1052,9 @@ __attribute__((naked)) void bits_blue_7() {
 	asm("sts blank, r30");
 	
 	// set ADC start conversion flag
-	asm("lds r30, %0" : : "" (ADCSRA) );
-	asm("ori r30, %0" : : "" (bit(ADSC)) );
-	asm("sts %0, r30" : : "" (ADCSRA) );
+	asm("lds r30, %0" : : "X" (ADCSRA) );
+	asm("ori r30, %0" : : "X" (bit(ADSC)) );
+	asm("sts %0, r30" : : "X" (ADCSRA) );
 	
 	// Restore status register, R31, and R30.
 	asm("pop r30");
@@ -1041,10 +1104,8 @@ __attribute__((naked)) void swap() {
 	asm("tst r18");
 	asm("breq wait_for_blank_high");
 	
-	sbi(PORTC,3);
-	
-	asm("lds r20, r + 0"); asm("lds r21, r + 1"); asm("lds r22, r + 2"); asm("lds r23, r + 3");
-	asm("lds r24, r + 4"); asm("lds r25, r + 5"); asm("lds r26, r + 6"); asm("lds r27, r + 7");
+	asm("lds r20, pixels +  0"); asm("lds r21, pixels +  3"); asm("lds r22, pixels +  6"); asm("lds r23, pixels +  9");
+	asm("lds r24, pixels + 12"); asm("lds r25, pixels + 15"); asm("lds r26, pixels + 18"); asm("lds r27, pixels + 21");
 
 	asm("clr r18");
 	asm("sbrc r20, 0"); asm("ori r18, 0x02"); asm("sbrc r21, 0"); asm("ori r18, 0x04");
@@ -1102,8 +1163,8 @@ __attribute__((naked)) void swap() {
 	asm("sbrc r26, 7"); asm("ori r18, 0x20"); asm("sbrc r27, 7"); asm("ori r18, 0x80");
 	asm("sts bits_RF + 7, r18");
 	
-	asm("lds r20, g + 0"); asm("lds r21, g + 1"); asm("lds r22, g + 2"); asm("lds r23, g + 3");
-	asm("lds r24, g + 4"); asm("lds r25, g + 5"); asm("lds r26, g + 6"); asm("lds r27, g + 7");
+	asm("lds r20, pixels +  1"); asm("lds r21, pixels +  4"); asm("lds r22, pixels +  7"); asm("lds r23, pixels + 10");
+	asm("lds r24, pixels + 13"); asm("lds r25, pixels + 16"); asm("lds r26, pixels + 19"); asm("lds r27, pixels + 22");
 
 	asm("clr r18");
 	asm("sbrc r20, 0"); asm("ori r18, 0x02"); asm("sbrc r21, 0"); asm("ori r18, 0x04");
@@ -1161,8 +1222,8 @@ __attribute__((naked)) void swap() {
 	asm("sbrc r26, 7"); asm("ori r18, 0x20"); asm("sbrc r27, 7"); asm("ori r18, 0x80");
 	asm("sts bits_GF + 7, r18");
 	
-	asm("lds r20, b + 0"); asm("lds r21, b + 1"); asm("lds r22, b + 2"); asm("lds r23, b + 3");
-	asm("lds r24, b + 4"); asm("lds r25, b + 5"); asm("lds r26, b + 6"); asm("lds r27, b + 7");
+	asm("lds r20, pixels +  2"); asm("lds r21, pixels +  5"); asm("lds r22, pixels +  8"); asm("lds r23, pixels + 11");
+	asm("lds r24, pixels + 14"); asm("lds r25, pixels + 17"); asm("lds r26, pixels + 20"); asm("lds r27, pixels + 23");
 
 	asm("clr r18");
 	asm("sbrc r20, 0"); asm("ori r18, 0x02"); asm("sbrc r21, 0"); asm("ori r18, 0x04");
@@ -1220,8 +1281,18 @@ __attribute__((naked)) void swap() {
 	asm("sbrc r26, 7"); asm("ori r18, 0x20"); asm("sbrc r27, 7"); asm("ori r18, 0x80");
 	asm("sts bits_BF + 7, r18");
 	
-	cbi(PORTC,3);
-	
+	asm("ret");
+}
+
+__attribute__((naked)) void clear() {
+	asm("sts pixels +  0, r1"); asm("sts pixels +  1, r1"); asm("sts pixels +  2, r1"); 
+	asm("sts pixels +  3, r1"); asm("sts pixels +  4, r1"); asm("sts pixels +  5, r1"); 
+	asm("sts pixels +  6, r1"); asm("sts pixels +  7, r1"); asm("sts pixels +  8, r1"); 
+	asm("sts pixels +  9, r1"); asm("sts pixels + 10, r1"); asm("sts pixels + 11, r1"); 
+	asm("sts pixels + 12, r1"); asm("sts pixels + 13, r1"); asm("sts pixels + 14, r1"); 
+	asm("sts pixels + 15, r1"); asm("sts pixels + 16, r1"); asm("sts pixels + 17, r1"); 
+	asm("sts pixels + 18, r1"); asm("sts pixels + 19, r1"); asm("sts pixels + 20, r1"); 
+	asm("sts pixels + 21, r1"); asm("sts pixels + 22, r1"); asm("sts pixels + 23, r1"); 
 	asm("ret");
 }
 
@@ -1288,7 +1359,7 @@ void SetupLEDs() {
 	// Power down all peripherals except timer 1 and the ADC. For whatever
 	// reason, this has to be done last otherwise some of the above settings
 	// don't actually do anything.
-	PRR = bit(PRTWI) | bit(PRTIM2) | bit(PRTIM0) | bit(PRSPI) | bit(PRUSART0);
+	PRR = bit(PRTWI) | bit(PRTIM2) | bit(PRTIM0) | bit(PRSPI);// | bit(PRUSART0);
 
 	// Device configured, kick off the first ADC conversion and enable
 	// interrupts.
