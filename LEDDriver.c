@@ -194,46 +194,44 @@ __attribute__((naked)) void bits_red_6() {
 		asm("sts led_tick, r30");
 		asm("sts led_tick+1, r31");
 
-		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-		asm("nop"); asm("nop");
+		asm("nop"); asm("nop"); asm("nop");
+		asm("nop"); asm("nop"); asm("nop");
 	}		
 
 	// switch to new sink
 	asm("ldi r30, %0" : : "M" (SINK_RED));
 	asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SINK)) );
 	
-	// send 0.375 uS pulse
+	// send 3 cycle pulse
 	{
 		asm("lds r30, bits_RF + 0");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
-	// send 0.625 uS pulse
+	// send 6 cycle pulse
 	{
 		asm("lds r30, bits_RF + 1");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	// 1 cycle gap
+	// 3 cycle gap
 
-	// set the monitor bit (2 cycles)
-	//asm("sbi %0, 2" : : "I"(_SFR_IO_ADDR(PORTC)) );
-	asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop");
 	
-	// send 1.25 uS pulse
+	// send 11 cycle pulse
 	{
 		asm("lds r30, bits_RF + 2");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	// 7 cycle gap
+	// 8 cycle gap
 	
 	// save temp registers
 	asm("push r25");
 	asm("push r28");
 	asm("push r29");
 	asm("nop");
+	asm("nop");
 	
-	// send 2.5 uS pulse
+	// send 20 cycle pulse
 	{
 		asm("lds r25, bits_RF + 3");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -261,7 +259,7 @@ __attribute__((naked)) void bits_red_6() {
 		asm("asr r27"); asm("ror r26");
 	}		
 
-	// send 5.0 uS pulse
+	// send 40 cycle pulse
 	{
 		asm("lds r25, bits_RF + 4");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -305,8 +303,8 @@ __attribute__((naked)) void bits_red_6() {
 
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); 
 	
+	// send 80 cycle pulse
 	{
-		// send 10.0 uS pulse
 		asm("lds r25, bits_RF + 5");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
@@ -421,7 +419,7 @@ __attribute__((naked)) void bits_red_6() {
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 
-	// send 20.0 uS pulse
+	// send 160 cycle pulse
 	{
 		asm("lds r30, bits_RF + 6");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -452,7 +450,7 @@ __attribute__((naked)) void bits_red_7() {
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 
-	// send 40.0 uS pulse
+	// send 320 cycle pulse
 	{
 		asm("lds r30, bits_RF + 7");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -481,13 +479,13 @@ __attribute__((naked)) void bits_green_6() {
 	asm("ldi r30, %0" : : "M" (SINK_GREEN));
 	asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SINK)) );
 	
-	// send 0.375 uS pulse
+	// send 3 cycle pulse
 	{
 		asm("lds r30, bits_GF + 0");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
-	// send 0.625 uS pulse
+	// send 6 cycle pulse
 	{
 		asm("lds r30, bits_GF + 1");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -496,14 +494,14 @@ __attribute__((naked)) void bits_green_6() {
 	
 	// clear the monitor bit (2 cycles)
 	//asm("cbi %0, 2" : : "I"(_SFR_IO_ADDR(PORTC)) );
-	asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop");
 	
-	// send 1.25 uS pulse
+	// send 11 cycle pulse
 	{
 		asm("lds r30, bits_GF + 2");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	// 7 cycle gap
+	// 8 cycle gap
 	
 	// save temp registers
 	
@@ -511,8 +509,9 @@ __attribute__((naked)) void bits_green_6() {
 	asm("push r28");
 	asm("push r29");
 	asm("nop");
+	asm("nop");
 	
-	// send 2.5 uS pulse
+	// send 20 cycle pulse
 	{
 		asm("lds r25, bits_GF + 3");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -523,12 +522,11 @@ __attribute__((naked)) void bits_green_6() {
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 	asm("nop"); asm("nop");
 	
-	// send 5.0 uS pulse
+	// send 40 cycle pulse
 	{
 		asm("lds r25, bits_GF + 4");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	
 	// 37 cycle gap
 
 	// clamp 2, 18 cycles
@@ -600,7 +598,7 @@ __attribute__((naked)) void bits_green_6() {
 	// 1 spare cycle
 	asm("nop");
 
-	// send 10.0 uS pulse
+	// send 80 cycle pulse
 	{
 		asm("lds r25, bits_GF + 5");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -692,7 +690,7 @@ __attribute__((naked)) void bits_green_6() {
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
-	// send 20.0 uS pulse
+	// send 160 cycle pulse
 	{
 		asm("lds r30, bits_GF + 6");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -721,7 +719,7 @@ __attribute__((naked)) void bits_green_7() {
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
-	// send 40.0 uS pulse
+	// send 320 cycle pulse
 	{
 		asm("lds r30, bits_GF + 7");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -750,27 +748,27 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("ldi r30, %0" : : "M" (SINK_BLUE));
 	asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SINK)) );
 	
-	// send 0.375 uS pulse
+	// send 3 cycle pulse
 	{
 		asm("lds r30, bits_BF + 0");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
-	// send 0.625 uS pulse
+	// send 6 cycle pulse
 	{
 		asm("lds r30, bits_BF + 1");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	// 2 cycle gap
+	// 3 cycle gap
 
-	asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop");
 	
-	// send 1.25 uS pulse
+	// send 11 cycle pulse
 	{
 		asm("lds r30, bits_BF + 2");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-	// 7 cycle gap
+	// 8 cycle gap
 
 	// save temp registers
 	asm("push r25");
@@ -778,8 +776,9 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("push r29");
 		
 	asm("nop");
+	asm("nop");
 	
-	// send 2.5 uS pulse
+	// send 20 cycle pulse
 	{
 		asm("lds r25, bits_BF + 3");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -803,7 +802,7 @@ __attribute__((naked)) void bits_blue_6() {
 
 	asm("nop"); asm("nop"); asm("nop");
 	
-	// send 5.0 uS pulse
+	// send 40 cycle pulse
 	{
 		asm("lds r25, bits_BF + 4");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -885,7 +884,7 @@ __attribute__((naked)) void bits_blue_6() {
 	}
 	
 
-	// send 10.0 uS pulse
+	// send 80 cycle pulse
 	{
 		asm("lds r25, bits_BF + 5");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -1008,7 +1007,7 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
-	// send 20.0 uS pulse
+	// send 160 cycle pulse
 	{
 		asm("lds r30, bits_BF + 6");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
@@ -1041,7 +1040,7 @@ __attribute__((naked)) void bits_blue_7() {
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
-	// send 40.0 uS pulse
+	// send 320 cycle pulse
 	{
 		asm("lds r30, bits_BF + 7");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
