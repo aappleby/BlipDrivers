@@ -79,14 +79,14 @@ void red_test() {
 	static uint16_t timer;
 	
 	const int step = 35;
-	const int speed = 3;
+	const int speed = 33;
 	
 	timer += speed;
 	uint8_t phase = timer >> 8;
 
 	for(int i = 0; i < 8; i++) {
 		uint8_t t = phase + step * i;
-		pixels[i].r = pgm_read_byte(gammasin + t);
+		pixels[i].r = pgm_read_byte(gammasin + t) >> 2;
 	}
 }	
 

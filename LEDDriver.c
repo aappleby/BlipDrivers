@@ -39,9 +39,9 @@
 
 #define ADC_CHANNEL 1
 
-#define SINK_RED 0x7D   // (~((1 << 1) | (1 << 7)))
-#define SINK_GREEN 0xB3 // (~((1 << 2) | (1 << 3) | (1 << 6)))
-#define SINK_BLUE 0xFE  // (~((1 << 0)))
+#define SINK_RED   0x7D  // (~((1 << 1) | (1 << 7)))
+#define SINK_GREEN 0xB3  // (~((1 << 2) | (1 << 3) | (1 << 6)))
+#define SINK_BLUE  0xFE  // (~((1 << 0)))
 
 #define bit(A)   (1 << A)
 #define sbi(p,b) { p |= (unsigned char)bit(b); }
