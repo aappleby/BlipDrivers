@@ -1,6 +1,7 @@
 #ifndef PATTERNS_H_
 #define PATTERNS_H_
 
+void button_test();
 void red_test();
 void green_test();
 void blue_test();

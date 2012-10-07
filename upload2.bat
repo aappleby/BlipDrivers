@@ -1,1 +1,1 @@
-avrdude -C ../avrdude.conf -p atmega328p -c arduino -P COM4 -b 57600 -D -V -U Release/BoardTest.hex
+C:/arduino/hardware/tools/avr/bin/avrdude -CC:/arduino/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P//./COM3 -b57600 -D -Uflash:w:release/boardtest.hex:i

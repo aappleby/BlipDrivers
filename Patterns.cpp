@@ -75,18 +75,26 @@ const uint8_t sparkles[256] PROGMEM =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
+void button_test() {
+	clear();
+	for(int i = 0; i < 8; i++) {
+		if(PINC & 0x02) pixels[i].g = 0xFF;
+		else pixels[i].r = 0xFF;
+	}
+}
+
 void red_test() {
 	static uint16_t timer;
 	
 	const int step = 35;
-	const int speed = 33;
+	const int speed = 3;
 	
 	timer += speed;
 	uint8_t phase = timer >> 8;
 
 	for(int i = 0; i < 8; i++) {
 		uint8_t t = phase + step * i;
-		pixels[i].r = pgm_read_byte(gammasin + t) >> 2;
+		pixels[i].r = pgm_read_byte(gammasin + t);
 	}
 }	
 
@@ -259,34 +267,34 @@ void StartupPattern() {
 }	
 
 void FastWaves() {
-	static uint16_t timerR;
+	//static uint16_t timerR;
 	static uint16_t timerG;
 	static uint16_t timerB;
 	
-	const int stepR = 25;
-	const int stepG = 26;
-	const int stepB = 27;
-	const int speedR = -7;
-	const int speedG = -8;
-	const int speedB = -9;
+	//const int stepR = 25;
+	const int stepG = 36;
+	const int stepB = 37;
+	//const int speedR = -327;
+	const int speedG = -528;
+	const int speedB = 629;
 	
 	
-	timerR += speedR + (bright1 >> 2);
-	timerG += speedG + (bright1 >> 2);
-	timerB += speedB + (bright1 >> 2);
-	uint8_t phaseR = timerR >> 8;
+	//timerR += speedR + (bright1 >> 2);
+	timerG += speedG;
+	timerB += speedB;
+	//uint8_t phaseR = timerR >> 8;
 	uint8_t phaseG = timerG >> 8;
 	uint8_t phaseB = timerB >> 8;
 	
-	uint8_t cursorR = phaseR;
+	//uint8_t cursorR = phaseR;
 	uint8_t cursorG = phaseG;
 	uint8_t cursorB = phaseB;
 	for(int i = 0; i < 8; i++) {
-		pixels[i].r = pgm_read_byte(gammasin + cursorR);
+		//pixels[i].r = pgm_read_byte(gammasin + cursorR);
 		pixels[i].g = pgm_read_byte(gammasin + cursorG);
 		pixels[i].b = pgm_read_byte(gammasin + cursorB);
 		
-		cursorR += stepR;
+		//cursorR += stepR;
 		cursorG += stepG;
 		cursorB += stepB;
 	}		

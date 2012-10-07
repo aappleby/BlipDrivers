@@ -19,7 +19,7 @@ extern struct Pixel pixels[8];
 void swap();
 void clear();
 
-extern uint16_t led_tick; // 4.096 khz
+extern uint32_t led_tick; // 4.096 khz
 
 extern uint8_t bright1;
 extern uint8_t bright2;
