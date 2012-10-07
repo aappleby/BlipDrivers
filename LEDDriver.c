@@ -7,6 +7,11 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
 
+// fuses for ATMega328p -
+// low:      0xE2
+// high:     0xDA
+// extended: 0xFF
+
 //-----------------------------------------------------------------------------
 // board configs
 
@@ -1503,33 +1508,19 @@ __attribute__((naked)) void clear() {
 // Initialization
 
 void ShutStuffDown() {
-}
-
-void SetupLEDs() {
-	cli();
+	// Disable ports
 	
-	// Port B is our sink port.
+	DDRB = 0x00;
+	DDRC = 0x00;
+	DDRD = 0x00;
+	
 	PORTB = 0x00;
-	DDRB = 0xFF;
-
-	// Port C is our status port. (Drive C2 high to power the mic on the greenwired board)
-	DDRC = 0xFC;
-	PORTC = BUTTON_PIN;// | 0x04;
-
-	// Port D is our source port.	
+	PORTC = BUTTON_PIN; // keep the button pin pulled up so we can come out of sleep mode
 	PORTD = 0x00;
-	DDRD = 0xFF;
-
-	timer_callback = bits_red_6;
 	
-	// Set up ADC to read from channel 1, left-adjust the result, and sample in
-	// (14 * 32) = 448 cycles (56 uS @ 8 mhz) - the fastest we can sample and
-	// still get 10-bit resolution.
-	ADMUX  = ADC_CHANNEL | bit(ADLAR);
-	ADCSRA = bit(ADEN) | bit(ADPS2) | bit(ADPS0);
-
 	// Disable analog comparator
 	ACSR = bit(ACD);
+	DIDR1 = 0x03;
 	
 	// Disable all external interrupts.
 	EICRA = 0;
@@ -1547,32 +1538,66 @@ void SetupLEDs() {
 	UCSR0B = 0;
 	
 	// Disable timer 0
+	TIMSK0 = 0;
 	TCCR0A = 0;
 	TCCR0B = 0;
 
-	// Set timer 1 to tick at full speed and generate overflow interrupts.
-	TIMSK1 =  (1 << TOIE1);
+	// Disable timer 1
+	TIMSK1 = 0;
 	TCCR1A = 0;
-	TCCR1B = (1 << CS10);
+	TCCR1B = 0;
 	
 	// Disable timer 2
+	TIMSK2 = 0;
 	TCCR2A = 0;
 	TCCR2B = 0;
 	
 	// Disable watchdog
 	WDTCSR = 0;
 	
-	// Power down all peripherals except timer 1 and the ADC. For whatever
-	// reason, this has to be done last otherwise some of the above settings
-	// don't actually do anything.
-	PRR = bit(PRTWI) | bit(PRTIM2) | bit(PRTIM0) | bit(PRSPI) | bit(PRUSART0);
-	
-	// Disable digital input buffers on all analog pins
-	DIDR0 = 0xFF;
-	DIDR1 = 0xFF;
+	// Power down all peripherals. This has to be done last otherwise some of the
+	// above settings don't actually do anything.
+	PRR = bit(PRTWI) | bit(PRTIM0) | bit(PRTIM1) | bit(PRTIM2) | bit(PRSPI) | bit(PRUSART0) | bit(PRADC);
+}
 
+void SetupLEDs() {
+	cli();
+	
+	ShutStuffDown();
+	
+	// Port B is our sink port.
+	PORTB = 0x00;
+	DDRB = 0xFF;
+
+	// Port C is our status port. (Drive C2 high to power the mic on the greenwired board)
+	DDRC = 0xFC;
+	PORTC = BUTTON_PIN | 0x04;
+
+	// Port D is our source port.	
+	PORTD = 0x00;
+	DDRD = 0xFF;
+
+	timer_callback = bits_red_6;
+	
+	// Set up ADC to read from channel 1, left-adjust the result, and sample in
+	// (14 * 32) = 448 cycles (56 uS @ 8 mhz) - the fastest we can sample and
+	// still get 10-bit resolution.
+
+	PRR &= ~bit(PRADC);
+	ADMUX  = ADC_CHANNEL | bit(ADLAR);
+	ADCSRA = bit(ADEN) | bit(ADPS2) | bit(ADPS0);
+	DIDR0 = 0x3F & ~BUTTON_PIN;
+
+	// Set timer 1 to tick at full speed and generate overflow interrupts.
+	PRR &= ~bit(PRTIM1);
+	TIMSK1 =  (1 << TOIE1);
+	TCCR1A = 0;
+	TCCR1B = (1 << CS10);
+	
 	// Device configured, kick off the first ADC conversion and enable
 	// interrupts.
 	sbi(ADCSRA,ADSC);
+
 	sei();
+
 }
