@@ -21,6 +21,13 @@ void clear();
 
 extern uint32_t led_tick; // 4.096 khz
 
+// Button debounce counters
+extern volatile uint8_t buttonstate;
+extern volatile uint16_t debounce_up;
+extern volatile uint16_t debounce_down;
+
+
+
 extern uint8_t bright1;
 extern uint8_t bright2;
 extern uint16_t tmax1;

@@ -6,6 +6,7 @@
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
+#include <avr/sleep.h>
 
 // fuses for ATMega328p -
 // low:      0xE2
@@ -103,6 +104,12 @@
 
 //-----------------------------------------------------------------------------
 
+const uint8_t sources[] PROGMEM =
+{
+	SOURCE_1, SOURCE_2, SOURCE_3, SOURCE_4,	SOURCE_5, SOURCE_6, SOURCE_7,
+	SOURCE_8, SOURCE_7, SOURCE_6, SOURCE_5, SOURCE_4, SOURCE_3, SOURCE_2,
+};
+
 // Front buffer
 uint8_t bits_RF[8];
 uint8_t bits_GF[8];
@@ -172,6 +179,11 @@ uint8_t bright2 = 0;
 
 // Internal tick count to trigger volume adaptation every 64 cycles.
 uint8_t tickcount = 0;
+
+// Button debounce counters
+volatile uint8_t buttonstate = 0;
+volatile uint16_t debounce_up = 0;
+volatile uint16_t debounce_down = 0;
 
 //-----------------------------------------------------------------------------
 
@@ -1047,6 +1059,7 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("pop r29");
 	asm("pop r28");
 	// can't restore r25 here, we're out of cycles - do it below.
+	// (and after we've updated the button...)
 
 	// set next callback
 	asm("ldi r30, pm_lo8(bits_blue_7)");
@@ -1065,6 +1078,68 @@ __attribute__((naked)) void bits_blue_6() {
 		asm("lds r30, bits_BF + 6");
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
+	
+	// Update button state. 27 cycles + 8 cycles call overhead.
+	// Safe to call this from here as it uses r25, r30, r31
+	asm("call UpdateButton");
+	/*
+	{
+		asm("lds r25, buttonstate");
+		asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(1));
+		asm("jmp button_down");
+
+		asm("button_up:");
+		asm("lds r30, debounce_up + 0");
+		asm("lds r31, debounce_up + 1");
+	
+		// if(buttonstate == 0) debounce_up = 0;
+		asm("sbrs r25, 0");
+		asm("clr r30");
+		asm("sbrs r25, 0");
+		asm("clr r31");
+
+		// if(debounce_up < 0x8000) debounce_up++;
+		asm("sbrs r31, 7");
+		asm("subi r30, 0xFF");
+		asm("sbrs r31, 7");
+		asm("sbci r31, 0xFF");
+
+		// store buttonstate & debounce_up
+		asm("ldi r25, 1");
+		asm("sts buttonstate, r25");
+		asm("sts debounce_up + 0, r30");
+		asm("sts debounce_up + 1, r31");
+
+		asm("jmp button_done");
+
+		asm("button_down:");
+		asm("lds r30, debounce_down + 0");
+		asm("lds r31, debounce_down + 1");
+	
+		// if(buttonstate == 1) debounce_down = 0;
+		asm("sbrc r25, 0");
+		asm("clr r30");
+		asm("sbrc r25, 0");
+		asm("clr r31");
+
+		// if(debounce_down < 0x8000) debounce_down++;
+		asm("sbrs r31, 7");
+		asm("subi r30, 0xFF");
+		asm("sbrs r31, 7");
+		asm("sbci r31, 0xFF");
+
+		// store buttonstate & debounce_up
+		asm("clr r25");
+		asm("sts buttonstate, r25");
+		asm("sts debounce_down + 0, r30");
+		asm("sts debounce_down + 1, r31");
+
+		asm("nop");
+		asm("nop");
+
+		asm("button_done:");
+	}
+	*/
 	
 	// restore r25 out here because the 10 uS block is completely packed.
 	asm("pop r25");
@@ -1107,7 +1182,7 @@ __attribute__((naked)) void bits_blue_7() {
 	asm("lds r30, %0" : : "X" (ADCSRA) );
 	asm("ori r30, %0" : : "X" (bit(ADSC)) );
 	asm("sts %0, r30" : : "X" (ADCSRA) );
-	
+
 	// Restore status register, R31, and R30.
 	asm("pop r30");
 	asm("out 0x3f, r30");
@@ -1183,314 +1258,6 @@ void swap() {
 	swap4c(&pixels[0].g, bits_GF);
 	swap4c(&pixels[0].b, bits_BF);
 }
-
-/*
-__attribute__((naked)) void swap2() {
-	asm("lds r20, pixels +  6"); asm("lds r21, pixels +  0"); asm("lds r22, pixels +  3"); asm("lds r23, pixels +  9");
-	asm("lds r24, pixels + 12"); asm("lds r25, pixels + 18"); asm("lds r26, pixels + 15"); asm("lds r27, pixels + 21");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 7, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 6, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 5, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 4, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 3, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 2, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 1, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_RF2 + 0, r18");
-
-	// green
-	
-	asm("lds r20, pixels +  7"); asm("lds r21, pixels +  1"); asm("lds r22, pixels +  4"); asm("lds r23, pixels + 10");
-	asm("lds r24, pixels + 13"); asm("lds r25, pixels + 19"); asm("lds r26, pixels + 16"); asm("lds r27, pixels + 22");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 7, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 6, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 5, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 4, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 3, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 2, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 1, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_GF2 + 0, r18");
-	
-	// blue
-	
-	asm("lds r20, pixels +  8"); asm("lds r21, pixels +  2"); asm("lds r22, pixels +  5"); asm("lds r23, pixels + 11");
-	asm("lds r24, pixels + 14"); asm("lds r25, pixels + 20"); asm("lds r26, pixels + 17"); asm("lds r27, pixels + 23");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 7, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 6, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 5, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 4, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 3, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 2, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 1, r18");
-
-	asm("lsl r20"); asm("ror r18");	asm("lsl r21");	asm("ror r18");	asm("lsl r22"); asm("ror r18");	asm("lsl r23"); asm("ror r18");
-	asm("lsl r24"); asm("ror r18");	asm("lsl r25"); asm("ror r18");	asm("lsl r26"); asm("ror r18");	asm("lsl r27"); asm("ror r18");
-	asm("sts bits_BF2 + 0, r18");
-
-	asm("ret");
-}
-*/
-
-/*
-__attribute__((naked)) void swap() {
-	asm("wait_for_blank_low:");
-	asm("lds r18, blank");
-	asm("tst r18");
-	asm("brne wait_for_blank_low");
-
-	asm("wait_for_blank_high:");
-	asm("lds r18, blank");
-	asm("tst r18");
-	asm("breq wait_for_blank_high");
-	
-	asm("lds r20, pixels +  0"); asm("lds r21, pixels +  3"); asm("lds r22, pixels +  6"); asm("lds r23, pixels +  9");
-	asm("lds r24, pixels + 12"); asm("lds r25, pixels + 15"); asm("lds r26, pixels + 18"); asm("lds r27, pixels + 21");
-
-	asm("clr r18");
-	asm("sbrc r20, 0"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 0"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 0"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 0"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 0"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 0"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 0"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 0"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 0, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 1"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 1"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 1"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 1"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 1"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 1"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 1"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 1"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 1, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 2"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 2"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 2"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 2"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 2"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 2"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 2"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 2"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 2, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 3"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 3"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 3"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 3"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 3"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 3"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 3"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 3"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 3, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 4"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 4"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 4"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 4"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 4"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 4"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 4"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 4"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 4, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 5"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 5"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 5"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 5"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 5"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 5"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 5"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 5"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 5, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 6"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 6"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 6"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 6"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 6"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 6"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 6"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 6"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 6, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 7"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 7"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 7"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 7"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 7"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 7"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 7"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 7"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_RF + 7, r18");
-	
-	asm("lds r20, pixels +  1"); asm("lds r21, pixels +  4"); asm("lds r22, pixels +  7"); asm("lds r23, pixels + 10");
-	asm("lds r24, pixels + 13"); asm("lds r25, pixels + 16"); asm("lds r26, pixels + 19"); asm("lds r27, pixels + 22");
-
-	asm("clr r18");
-	asm("sbrc r20, 0"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 0"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 0"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 0"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 0"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 0"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 0"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 0"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 0, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 1"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 1"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 1"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 1"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 1"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 1"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 1"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 1"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 1, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 2"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 2"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 2"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 2"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 2"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 2"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 2"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 2"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 2, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 3"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 3"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 3"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 3"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 3"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 3"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 3"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 3"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 3, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 4"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 4"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 4"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 4"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 4"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 4"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 4"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 4"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 4, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 5"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 5"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 5"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 5"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 5"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 5"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 5"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 5"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 5, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 6"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 6"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 6"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 6"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 6"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 6"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 6"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 6"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 6, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 7"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 7"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 7"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 7"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 7"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 7"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 7"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 7"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_GF + 7, r18");
-	
-	asm("lds r20, pixels +  2"); asm("lds r21, pixels +  5"); asm("lds r22, pixels +  8"); asm("lds r23, pixels + 11");
-	asm("lds r24, pixels + 14"); asm("lds r25, pixels + 17"); asm("lds r26, pixels + 20"); asm("lds r27, pixels + 23");
-
-	asm("clr r18");
-	asm("sbrc r20, 0"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 0"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 0"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 0"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 0"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 0"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 0"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 0"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 0, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 1"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 1"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 1"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 1"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 1"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 1"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 1"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 1"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 1, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 2"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 2"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 2"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 2"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 2"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 2"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 2"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 2"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 2, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 3"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 3"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 3"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 3"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 3"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 3"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 3"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 3"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 3, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 4"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 4"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 4"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 4"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 4"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 4"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 4"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 4"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 4, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 5"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 5"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 5"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 5"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 5"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 5"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 5"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 5"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 5, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 6"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 6"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 6"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 6"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 6"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 6"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 6"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 6"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 6, r18");
-	
-	asm("clr r18");
-	asm("sbrc r20, 7"); asm("ori r18, %0" : : "X"(SOURCE_1)); asm("sbrc r21, 7"); asm("ori r18, %0" : : "X"(SOURCE_2));
-	asm("sbrc r22, 7"); asm("ori r18, %0" : : "X"(SOURCE_3)); asm("sbrc r23, 7"); asm("ori r18, %0" : : "X"(SOURCE_4));
-	asm("sbrc r24, 7"); asm("ori r18, %0" : : "X"(SOURCE_5)); asm("sbrc r25, 7"); asm("ori r18, %0" : : "X"(SOURCE_6));
-	asm("sbrc r26, 7"); asm("ori r18, %0" : : "X"(SOURCE_7)); asm("sbrc r27, 7"); asm("ori r18, %0" : : "X"(SOURCE_8));
-	asm("sts bits_BF + 7, r18");
-	
-	asm("ret");
-}
-*/
 
 __attribute__((naked)) void clear() {
 	asm("sts pixels +  0, r1"); asm("sts pixels +  1, r1"); asm("sts pixels +  2, r1"); 
@@ -1600,4 +1367,129 @@ void SetupLEDs() {
 
 	sei();
 
+}
+
+// Update button state. 27 cycles + call overhead. Uses r25, r30, r31
+__attribute__((naked)) void UpdateButton() 
+{
+	asm("lds r25, buttonstate");
+	asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(1));
+	asm("jmp button_down2");
+
+	asm("button_up2:");
+	asm("lds r30, debounce_up + 0");
+	asm("lds r31, debounce_up + 1");
+		
+	// if(buttonstate == 0) debounce_up = 0;
+	asm("sbrs r25, 0");
+	asm("clr r30");
+	asm("sbrs r25, 0");
+	asm("clr r31");
+
+	// if(debounce_up < 0x8000) debounce_up++;
+	asm("sbrs r31, 7");
+	asm("subi r30, 0xFF");
+	asm("sbrs r31, 7");
+	asm("sbci r31, 0xFF");
+
+	// store buttonstate & debounce_up
+	asm("ldi r25, 1");
+	asm("sts buttonstate, r25");
+	asm("sts debounce_up + 0, r30");
+	asm("sts debounce_up + 1, r31");
+
+	asm("jmp button_done2");
+
+	asm("button_down2:");
+	asm("lds r30, debounce_down + 0");
+	asm("lds r31, debounce_down + 1");
+		
+	// if(buttonstate == 1) debounce_down = 0;
+	asm("sbrc r25, 0");
+	asm("clr r30");
+	asm("sbrc r25, 0");
+	asm("clr r31");
+
+	// if(debounce_down < 0x8000) debounce_down++;
+	asm("sbrs r31, 7");
+	asm("subi r30, 0xFF");
+	asm("sbrs r31, 7");
+	asm("sbci r31, 0xFF");
+
+	// store buttonstate & debounce_up
+	asm("clr r25");
+	asm("sts buttonstate, r25");
+	asm("sts debounce_down + 0, r30");
+	asm("sts debounce_down + 1, r31");
+
+	asm("nop");
+	asm("nop");
+
+	asm("button_done2:");
+	asm("ret");
+}
+
+
+const uint8_t gammasin2[] PROGMEM =
+{
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	1,1,1,1,1,2,2,2,2,3,3,4,4,5,5,6,7,8,9,9,10,
+	11,13,14,15,16,18,19,21,23,24,26,28,30,32,34,37,39,41,44,46,49,52,55,58,61,
+	64,67,70,73,77,80,84,87,91,95,98,102,106,110,114,118,122,126,130,134,138,142,146,
+	150,154,158,162,166,170,174,178,182,186,190,193,197,200,204,207,211,214,217,220,
+	223,226,228,231,234,236,238,240,242,244,246,247,249,250,251,252,253,254,254,255,
+	255,255,255,255,254,254,253,252,251,250,249,247,246,244,242,240,238,236,234,231,
+	228,226,223,220,217,214,211,207,204,200,197,193,190,186,182,178,174,170,166,162,
+	158,154,150,146,142,138,134,130,126,122,118,114,110,106,102,98,95,91,87,84,80,77,
+	73,70,67,64,61,58,55,52,49,46,44,41,39,37,34,32,30,28,26,24,23,21,19,18,16,15,14,
+	13,11,10,9,9,8,7,6,5,5,4,4,3,3,2,2,2,2,1,1,1,1,1,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+
+// watchdog interrupt has to exist or the chip resets.
+ISR(WDT_vect) {}
+
+void GoToSleep()
+{
+	uint8_t cursor = 0;
+	uint8_t column = 0;
+
+	ShutStuffDown();
+	sleep_bod_disable();
+
+	SMCR = bit(SE) | bit(SM1);
+	WDTCSR = bit(WDCE) | bit(WDE);
+	WDTCSR = bit(WDIE);
+	
+	DDRD = 0xFF;
+	PORTD = 0x00;
+	DDRB = 0xFF;
+	PORTB = SINK_GREEN;
+	
+	while(1)
+	{
+		asm("sleep");
+		
+		UpdateButton();
+		
+		if((buttonstate == 0) && (debounce_down > 60))
+		{
+			SMCR = 0;
+			WDTCSR = bit(WDCE) | bit(WDE);
+			WDTCSR = 0;
+			SetupLEDs();
+			return;
+		}
+
+		uint8_t bright = pgm_read_byte(gammasin2 + cursor) >> 2;
+		if(bright) 
+		{
+			PORTD = pgm_read_byte(sources + column);
+			for(uint8_t i = 0; i < bright; i++) { asm("nop"); }
+			PORTD = 0;
+		}
+	
+		cursor += 1;
+		if(cursor == 0) column = (column == 13) ? 0 : column + 1;
+	}
 }
