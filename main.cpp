@@ -114,7 +114,6 @@ int main(void)
 		if((buttonstate == 0) && (debounce_down > 1024)) {
 			uint32_t old_tick = led_tick;
 			for(int i = 0; i < 8; i++) { backup[i] = pixels[i]; }
-			// wait for button to go high again
 			for(uint16_t i = 0; i < 256; i++) {
 				uint8_t f = ((255-i) * (255-i)) >> 8;
 				for(int j = 0; j < 8; j++) {
