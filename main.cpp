@@ -35,8 +35,6 @@ void testLEDs() {
 
 //---------------------------------------------------------------------------
 
-void (*pattern_callback)();
-
 void dumb() {
 	clear();
 	if(led_tick & (1 << 12)) pixels[(led_tick >> 9) & 7].r = 0xFF;
@@ -105,13 +103,34 @@ void hsv()
 	}
 }
 
+typedef void (*pattern_callback)();
+
+int pattern_index = 0;
+
+pattern_callback patterns[] = {
+	red_test,
+	green_test,
+	blue_test,
+	audio_test,
+	VUMeter,
+	Speed,
+	RGBWaves,
+	StartupPattern,
+	FastWaves,
+	Sparkles,
+	Scroller,
+	SpaceZoom,
+	crosscross,
+};
+
+
+
 int main(void)
 {
 	SetupLEDs();
 	
-	pattern_callback = RGBWaves;
 	while(1) {
-		if((buttonstate == 0) && (debounce_down > 1024)) {
+		if((buttonstate == 0) && (debounce_down > 16384)) {
 			uint32_t old_tick = led_tick;
 			for(int i = 0; i < 8; i++) { backup[i] = pixels[i]; }
 			for(uint16_t i = 0; i < 256; i++) {
@@ -126,7 +145,6 @@ int main(void)
 			// wait for button release before going to sleep
 			while(buttonstate == 0);
 			GoToSleep();
-			while(buttonstate == 0);
 			/*
 			while(1) {
 				clear();
@@ -149,9 +167,19 @@ int main(void)
 				for(int j = 0; j < 13; j++) swap();
 			}
 			led_tick = old_tick;
+			while(buttonstate == 0);
+			debounce_down = 0;
+			debounce_up = 0;
 		}
 		
-		pattern_callback();
+		if((buttonstate == 1) && (debounce_down > 256)) {
+			//pattern_callback = red_test;
+			pattern_index = (pattern_index + 1) % 13;
+			debounce_down = 0;
+		}
+		
+		clear();
+		patterns[pattern_index]();
 		//sbi(PORTC,3);
 		//_delay_ms(1);
 		swap();
@@ -159,3 +187,5 @@ int main(void)
 		//_delay_ms(1);
 	}		
 }
+
+

@@ -18,5 +18,8 @@ void Scroller();
 void SpaceZoom();
 void crosscross();
 void blah();
+void Speed();
+void FastWaves();
+void VUMeter();
 
 #endif

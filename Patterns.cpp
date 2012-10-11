@@ -7,7 +7,6 @@
 
 //-----------------------------------------------------------------------------
 
-/*
 const uint8_t sintab[256] PROGMEM =
 {	
 128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173,
@@ -25,9 +24,7 @@ const uint8_t sintab[256] PROGMEM =
 18, 20, 21, 23, 25, 27, 29, 31, 33, 35, 37, 40, 42, 44, 47, 49, 52, 54, 57, 59, 62, 
 65, 67, 70, 73, 76, 79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124
 };
-*/
 
-/*
 const uint8_t quadtab[256] PROGMEM =
 {
 255, 251, 247, 243, 239, 235, 232, 228, 224, 220, 217, 213, 209, 206, 202, 199, 195, 192, 
@@ -43,7 +40,6 @@ const uint8_t quadtab[256] PROGMEM =
 149, 152, 155, 158, 162, 165, 168, 171, 175, 178, 181, 185, 188, 192, 195, 199, 202, 206, 209, 
 213, 217, 220, 224, 228, 232, 235, 239, 243, 247, 251, 255,
 };
-*/
 
 // Gamma-corrected sine wave
 const uint8_t gammasin[] PROGMEM =
@@ -62,7 +58,30 @@ const uint8_t gammasin[] PROGMEM =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-/*
+const uint8_t gammapulse[256] PROGMEM =
+{
+	//0,0,0,0,0,0,0,0,0,0,0,1,1,2,3,4,
+	//5,6,8,10,12,15,17,20,24,28,32,36,41,46,51,57,
+	//63,70,76,83,91,98,106,113,121,129,138,146,154,162,170,178,
+	//185,193,200,207,213,220,225,231,235,240,244,247,250,252,253,254,
+	255,254,253,252,250,247,244,240,235,231,225,220,213,207,200,193,
+	185,178,170,162,154,146,138,129,121,113,106,98,91,83,76,70,
+	63,57,51,46,41,36,32,28,24,20,17,15,12,10,8,6,
+	5,4,3,2,1,1,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
+
 const uint8_t sparkles[256] PROGMEM =
 {
 	// Exponential spike, scale factor 1.25, 25 elements
@@ -79,7 +98,30 @@ const uint8_t sparkles[256] PROGMEM =
 	16, 20, 25, 31, 39, 48, 61, 76, 95, 119, 149, 186, 232, 186, 149, 119, 95, 76, 61, 48, 39, 31, 25, 20, 16,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-*/
+
+const uint8_t pixel16[256] PROGMEM =
+{
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+
+	255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
 
 void button_test() {
 	clear();
@@ -120,29 +162,28 @@ void blue_test() {
 }
 
 void audio_test() {
-	pixels[0].r = pixels[0].g = bright1 >> 2;
-	pixels[1].r = pixels[1].g = bright1 >> 2;
-	pixels[2].r = pixels[2].b = bright2;
+	pixels[0].r = pixels[0].g = pixels[0].b = bright1;
+	pixels[1].r = pixels[1].g = pixels[1].b = bright1;
+	pixels[2].r = pixels[2].g = pixels[2].b = bright2;
 	pixels[3].r = pixels[3].g = pixels[3].b = bright2;
 	pixels[4].r = pixels[4].g = pixels[4].b = bright2;
-	pixels[5].r = pixels[5].b = bright2;
-	pixels[6].r = pixels[6].g = bright1 >> 2;
-	pixels[7].r = pixels[7].g = bright1 >> 2;
+	pixels[5].r = pixels[5].g = pixels[5].b = bright2;
+	pixels[6].r = pixels[6].g = pixels[6].b = bright1;
+	pixels[7].r = pixels[7].g = pixels[7].b = bright1;
 }	
 
-/*
-void speed() {
+void Speed() {
 	static uint8_t dir = 0;
 	static uint8_t mode = 0;
 	static uint16_t timer;
 	
 	if(mode == 0) {
-		if(bright2 > 255-20) {
+		if(ibright2 > 16384 + 8192) {
 			mode = 1;
 			dir = !dir;
 		}			
 	} else {
-		if(bright2 < 20) {
+		if(ibright2 < 8192) {
 			mode = 0;
 		}			
 	}		
@@ -150,9 +191,9 @@ void speed() {
 	const int step = 35;
 	
 	if(dir) {
-		timer += (bright2 >> 2);
+		timer += (ibright1 >> 10);
 	} else {
-		timer -= (bright2 >> 2);
+		timer -= (ibright1 >> 10);
 	}				
 	uint8_t phase = timer >> 8;
 
@@ -161,9 +202,7 @@ void speed() {
 		pixels[i].r = pixels[i].b = pgm_read_byte(gammasin + t);
 	}
 }
-*/	
 
-/*
 void Gradients() {
 	pixels[0].r = (224 * bright2) / 256;
 	pixels[1].r = (192 * bright2) / 256;
@@ -174,14 +213,14 @@ void Gradients() {
 	pixels[6].r = (32 * bright2) / 256;
 	pixels[7].r = (0 * bright2) / 256;
 		
-	pixels[0].g = (32  * bright1) / 256;
-	pixels[1].g = (64  * bright1) / 256;
-	pixels[2].g = (128 * bright1) / 256;
-	pixels[3].g = (255 * bright1) / 256;
-	pixels[4].g = (255 * bright1) / 256;
-	pixels[5].g = (128 * bright1) / 256;
-	pixels[6].g = (64  * bright1) / 256;
-	pixels[7].g = (32  * bright1) / 256;
+	pixels[0].g = (32  * bright2) / 256;
+	pixels[1].g = (64  * bright2) / 256;
+	pixels[2].g = (128 * bright2) / 256;
+	pixels[3].g = (255 * bright2) / 256;
+	pixels[4].g = (255 * bright2) / 256;
+	pixels[5].g = (128 * bright2) / 256;
+	pixels[6].g = (64  * bright2) / 256;
+	pixels[7].g = (32  * bright2) / 256;
 
 	pixels[0].b = (0 * bright2) / 256;
 	pixels[1].b = (32 * bright2) / 256;
@@ -192,7 +231,6 @@ void Gradients() {
 	pixels[6].b = (192 * bright2) / 256;
 	pixels[7].b = (224 * bright2) / 256;
 }
-*/
 
 void RGBWaves() {
 	const int stepR = 14;
@@ -240,43 +278,39 @@ void StartupPattern() {
 	}		
 }	
 
-/*
 void FastWaves() {
-	//static uint16_t timerR;
+	static uint16_t timerR;
 	static uint16_t timerG;
 	static uint16_t timerB;
 	
-	//const int stepR = 25;
+	const int stepR = 25;
 	const int stepG = 36;
 	const int stepB = 37;
-	//const int speedR = -327;
+	const int speedR = -327;
 	const int speedG = -528;
 	const int speedB = 629;
 	
-	
-	//timerR += speedR + (bright1 >> 2);
+	timerR += speedR;// + (bright1 >> 2);
 	timerG += speedG;
 	timerB += speedB;
-	//uint8_t phaseR = timerR >> 8;
+	uint8_t phaseR = timerR >> 8;
 	uint8_t phaseG = timerG >> 8;
 	uint8_t phaseB = timerB >> 8;
 	
-	//uint8_t cursorR = phaseR;
+	uint8_t cursorR = phaseR;
 	uint8_t cursorG = phaseG;
 	uint8_t cursorB = phaseB;
 	for(int i = 0; i < 8; i++) {
-		//pixels[i].r = pgm_read_byte(gammasin + cursorR);
-		pixels[i].g = pgm_read_byte(gammasin + cursorG);
-		pixels[i].b = pgm_read_byte(gammasin + cursorB);
+		pixels[i].r = pgm_read_byte(gammapulse + cursorR);
+		pixels[i].g = pgm_read_byte(gammapulse + cursorG);
+		pixels[i].b = pgm_read_byte(gammapulse + cursorB);
 		
-		//cursorR += stepR;
+		cursorR += stepR;
 		cursorG += stepG;
 		cursorB += stepB;
-	}		
+	}
 }
-*/
 
-/*
 void Sparkles() {
 	static uint16_t x[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 	
@@ -316,9 +350,7 @@ void Sparkles() {
 		pixels[i].g = (pixels[i].g * bright2) >> 8;
 	}		
 }
-*/
 
-/*
 void Scroller() {
 	static uint8_t buffer[256];
 	static uint8_t tick = 0;
@@ -340,34 +372,7 @@ void Scroller() {
 		pixels[i].b = buffer[x3];
 	}
 }
-*/
 
-/*
-const uint8_t pixel16[256] PROGMEM =
-{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
-
-	255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-};
-*/
-
-/*
 void SpaceZoom() {
 	static uint8_t tick1 = 0;
 	static uint8_t tick2 = 0;
@@ -389,9 +394,6 @@ void SpaceZoom() {
 		tick2 = 0;
 	}
 	
-	//for(int i = 0; i < 8; i++) { r[i] = g[i] = b[i] = bright2;}
-	//return;
-	
 	for(int i = 0; i < 8; i++) {
 		uint8_t x = (i * 16 - 63) + 128;
 		uint8_t s = pgm_read_byte(sintab + frame);
@@ -411,7 +413,6 @@ void SpaceZoom() {
 		pixels[i].b = buffer[t3];
 	}
 }
-*/
 
 /*
 void float_test() {
@@ -460,7 +461,40 @@ void float_test() {
 }
 */
 
-/*
+void VUMeter() {
+	uint16_t 
+	clear();
+	uint16_t b = ibright2 >> 6;
+	for(int i = 3; i >= 0; i--) {
+		if(b > 256) {
+			pixels[i].r = 0xFF;
+			pixels[i].g = 0xFF >> 2;
+			b -= 256;
+		}
+		else 
+		{
+			pixels[i].r = b;
+			pixels[i].g = b >> 2;
+			break;
+		}
+	}
+	b = ibright1 >> 6;
+	for(int i = 4; i < 8; i++) {
+		if(b > 256) {
+			pixels[i].b = 0xFF >> 2;
+			pixels[i].g = 0xFF;
+			b -= 256;
+		}
+		else
+		{
+			b = (b * b) >> 8;
+			pixels[i].b = b >> 2;
+			pixels[i].g = b;
+			break;
+		}
+	}
+}
+
 void crosscross() {
 	Pixel dark[8] = {
 		{   0,   0,   0 },
@@ -512,14 +546,13 @@ void crosscross() {
 		uint8_t g2 = (ears[i].g * bright1) >> 8;
 		uint8_t b2 = (ears[i].b * bright1) >> 8;
 		
-		uint8_t s = pgm_read_byte(gammasin + cursor);
-		cursor += step;
-		pixels[i].r = ((r1 + r2) * s) >> 8;
-		pixels[i].g = ((g1 + g2) * s) >> 8;
-		pixels[i].b = ((b1 + b2 + 16) * s) >> 8;
+		//uint8_t s = pgm_read_byte(gammasin + cursor);
+		//cursor += step;
+		pixels[i].r = (r1 + r2);
+		pixels[i].g = (g1 + g2);
+		pixels[i].b = (b1 + b2 + 8);
 	}		
 }	
-*/
 
 /*
 void blah() {
