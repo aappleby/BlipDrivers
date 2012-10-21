@@ -62,6 +62,10 @@ void fade (uint8_t& x) {
 	x = y >> 8;
 }
 
+
+
+
+
 void hsv()
 {
 	uint8_t h = led_tick >> 8;
@@ -108,6 +112,8 @@ typedef void (*pattern_callback)();
 int pattern_index = 0;
 
 pattern_callback patterns[] = {
+	PulseFade,
+	Sparklefest,
 	red_test,
 	green_test,
 	blue_test,
@@ -123,6 +129,22 @@ pattern_callback patterns[] = {
 	crosscross,
 };
 
+uint16_t blarp1 = 0x0001;
+uint16_t blarp2 = 0x0002;
+
+__attribute__((naked)) void saturation_test() {
+	asm("lds r20, blarp1 + 0");
+	asm("lds r21, blarp1 + 1");
+	asm("lds r22, blarp2 + 0");
+	asm("lds r23, blarp2 + 1");
+	asm("sub r20, r22");
+	asm("sbc r21, r23");
+	asm("in r24, 0x3F");
+	asm("sbrc r24,0");
+	asm("ldi r20, 0xFF");
+	asm("sbrc r24, 0");
+	asm("ldi r21, 0xFF");
+}
 
 
 int main(void)
@@ -130,6 +152,10 @@ int main(void)
 	SetupLEDs();
 	
 	while(1) {
+		//white();
+		pov_test2();
+		swap();
+		/*
 		if((buttonstate == 0) && (debounce_down > 16384)) {
 			uint32_t old_tick = led_tick;
 			for(int i = 0; i < 8; i++) { backup[i] = pixels[i]; }
@@ -145,17 +171,6 @@ int main(void)
 			// wait for button release before going to sleep
 			while(buttonstate == 0);
 			GoToSleep();
-			/*
-			while(1) {
-				clear();
-				red_test();
-				swap();
-				if((buttonstate == 0) && (debounce_down > 1024)) {
-					while(buttonstate == 0);
-					break;
-				}
-			}
-			*/
 			
 			for(uint16_t i = 0; i < 256; i++) {
 				uint8_t f = (i * i) >> 8;
@@ -180,11 +195,8 @@ int main(void)
 		
 		clear();
 		patterns[pattern_index]();
-		//sbi(PORTC,3);
-		//_delay_ms(1);
 		swap();
-		//cbi(PORTC,3);
-		//_delay_ms(1);
+		*/
 	}		
 }
 

@@ -8,6 +8,8 @@
 #include <avr/pgmspace.h> 
 #include <avr/sleep.h>
 
+#define BOARDTYPE_POVLACE1
+
 // fuses for ATMega328p -
 // low:      0xE2
 // high:     0xDA
@@ -55,6 +57,7 @@
 //-----------------------------------------------------------------------------
 // test board from OSH Park
 
+#ifdef BOARDTYPE_PROTO1
 #define DIR_SOURCE  DDRD
 #define DIR_SINK    DDRB
 #define DIR_STATUS  DDRC
@@ -79,6 +82,40 @@
 #define SINK_BLUE  0x9F  // (~((1 << 0)))
 
 #define BUTTON_PIN 0x02
+
+#define MIC_POWER 7
+#define MIC_PIN 0
+#endif
+
+//-----------------------------------------------------------------------------
+// POVLace 1
+
+#ifdef BOARDTYPE_POVLACE1
+#define DIR_SOURCE  DDRD
+#define DIR_SINK    DDRB
+#define DIR_STATUS  DDRC
+
+#define PORT_SOURCE PORTD
+#define PORT_SINK   PORTB
+#define PORT_STATUS PORTC
+
+#define SOURCE_1 0x02
+#define SOURCE_2 0x04
+#define SOURCE_3 0x01
+#define SOURCE_4 0x08
+#define SOURCE_5 0x10
+#define SOURCE_6 0x40
+#define SOURCE_7 0x20
+#define SOURCE_8 0x80
+
+#define SINK_RED   0xDE
+#define SINK_GREEN 0xED
+#define SINK_BLUE  0xF3
+
+#define MIC_PIN 7
+#define MIC_POWER 2
+#define BUTTON_PIN 3
+#endif
 
 //-----------------------------------------------------------------------------
 
@@ -1337,8 +1374,8 @@ void SetupLEDs() {
 	DDRB = 0xFF;
 
 	// Port C is our status port. (Drive C2 high to power the mic on the greenwired board)
-	DDRC = 0xFC;
-	PORTC = BUTTON_PIN | 0x04;
+	DDRC = (1 << MIC_POWER);
+	PORTC = (1 << BUTTON_PIN) | (1 << MIC_POWER);
 
 	// Port D is our source port.	
 	PORTD = 0x00;
@@ -1351,7 +1388,7 @@ void SetupLEDs() {
 	// still get 10-bit resolution.
 
 	PRR &= ~bit(PRADC);
-	ADMUX  = ADC_CHANNEL | bit(ADLAR);
+	ADMUX  = MIC_PIN | bit(ADLAR);
 	ADCSRA = bit(ADEN) | bit(ADPS2) | bit(ADPS0);
 	DIDR0 = 0x3F & ~BUTTON_PIN;
 

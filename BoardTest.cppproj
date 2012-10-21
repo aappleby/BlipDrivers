@@ -33,7 +33,7 @@
       </OverrideVtorValue>
       <Channel>
         <host>127.0.0.1</host>
-        <port>1036</port>
+        <port>44008</port>
         <ssl>False</ssl>
       </Channel>
       <ToolOptions>
@@ -62,7 +62,7 @@
       </OverrideVtorValue>
       <Channel>
         <host>127.0.0.1</host>
-        <port>17553</port>
+        <port>3399</port>
         <ssl>False</ssl>
       </Channel>
     </com_atmel_avrdbg_tool_simulator>

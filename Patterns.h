@@ -4,6 +4,8 @@
 void button_test();
 void red_test();
 void green_test();
+void pov_test();
+void pov_test2();
 void blue_test();
 void audio_test();
 
@@ -21,5 +23,7 @@ void blah();
 void Speed();
 void FastWaves();
 void VUMeter();
+void Sparklefest();
+void PulseFade();
 
 #endif
