@@ -81,10 +81,78 @@
 #define SINK_GREEN 0x6E  // (~((1 << 2) | (1 << 3) | (1 << 6)))
 #define SINK_BLUE  0x9F  // (~((1 << 0)))
 
-#define BUTTON_PIN 0x02
+#define BUTTON1_PIN 1
 
 #define MIC_POWER 7
 #define MIC_PIN 0
+#endif
+
+//-----------------------------------------------------------------------------
+// test board from OSH Park 2
+
+#ifdef BOARDTYPE_PROTO2
+#define DIR_SOURCE  DDRD
+#define DIR_SINK    DDRB
+#define DIR_STATUS  DDRC
+
+#define PORT_SOURCE PORTD
+#define PORT_SINK   PORTB
+#define PORT_STATUS PORTC
+
+#define ADC_CHANNEL 0
+
+#define SOURCE_1 0x02
+#define SOURCE_2 0x04
+#define SOURCE_3 0x01
+#define SOURCE_4 0x08
+#define SOURCE_5 0x10
+#define SOURCE_6 0x40
+#define SOURCE_7 0x20
+#define SOURCE_8 0x80
+
+#define SINK_RED 0x6E
+#define SINK_GREEN 0xF1
+#define SINK_BLUE 0x9F
+
+#define BUTTON1_PIN 1
+#define BUTTON2_PIN 1
+
+#define MIC_POWER 2
+#define MIC_PIN 7
+#endif
+
+//-----------------------------------------------------------------------------
+// test board from OSH Park 3
+
+#ifdef BOARDTYPE_PROTO3
+#define DIR_SOURCE  DDRD
+#define DIR_SINK    DDRB
+#define DIR_STATUS  DDRC
+
+#define PORT_SOURCE PORTD
+#define PORT_SINK   PORTB
+#define PORT_STATUS PORTC
+
+#define ADC_CHANNEL 0
+
+#define SOURCE_1 0x02
+#define SOURCE_2 0x04
+#define SOURCE_3 0x01
+#define SOURCE_4 0x08
+#define SOURCE_5 0x10
+#define SOURCE_6 0x40
+#define SOURCE_7 0x20
+#define SOURCE_8 0x80
+
+#define SINK_RED 0x6E
+#define SINK_GREEN 0xF1
+#define SINK_BLUE 0x9F
+
+#define BUTTON1_PIN 3
+#define BUTTON2_PIN 4
+
+#define MIC_POWER 2
+#define MIC_PIN 7
 #endif
 
 //-----------------------------------------------------------------------------
@@ -114,7 +182,8 @@
 
 #define MIC_PIN 7
 #define MIC_POWER 2
-#define BUTTON_PIN 3
+#define BUTTON1_PIN 3
+#define BUTTON2_PIN 3
 #endif
 
 //-----------------------------------------------------------------------------
@@ -218,9 +287,13 @@ uint8_t bright2 = 0;
 uint8_t tickcount = 0;
 
 // Button debounce counters
-volatile uint8_t buttonstate = 0;
-volatile uint16_t debounce_up = 0;
-volatile uint16_t debounce_down = 0;
+volatile uint8_t buttonstate1 = 0;
+volatile uint16_t debounce_up1 = 0;
+volatile uint16_t debounce_down1 = 0;
+
+volatile uint8_t buttonstate2 = 0;
+volatile uint16_t debounce_up2 = 0;
+volatile uint16_t debounce_down2 = 0;
 
 //-----------------------------------------------------------------------------
 
@@ -1118,66 +1191,8 @@ __attribute__((naked)) void bits_blue_6() {
 	
 	// Update button state. 27 cycles + 8 cycles call overhead.
 	// Safe to call this from here as it uses r25, r30, r31
-	asm("call UpdateButton");
-	/*
-	{
-		asm("lds r25, buttonstate");
-		asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(1));
-		asm("jmp button_down");
+	asm("call UpdateButtons");
 
-		asm("button_up:");
-		asm("lds r30, debounce_up + 0");
-		asm("lds r31, debounce_up + 1");
-	
-		// if(buttonstate == 0) debounce_up = 0;
-		asm("sbrs r25, 0");
-		asm("clr r30");
-		asm("sbrs r25, 0");
-		asm("clr r31");
-
-		// if(debounce_up < 0x8000) debounce_up++;
-		asm("sbrs r31, 7");
-		asm("subi r30, 0xFF");
-		asm("sbrs r31, 7");
-		asm("sbci r31, 0xFF");
-
-		// store buttonstate & debounce_up
-		asm("ldi r25, 1");
-		asm("sts buttonstate, r25");
-		asm("sts debounce_up + 0, r30");
-		asm("sts debounce_up + 1, r31");
-
-		asm("jmp button_done");
-
-		asm("button_down:");
-		asm("lds r30, debounce_down + 0");
-		asm("lds r31, debounce_down + 1");
-	
-		// if(buttonstate == 1) debounce_down = 0;
-		asm("sbrc r25, 0");
-		asm("clr r30");
-		asm("sbrc r25, 0");
-		asm("clr r31");
-
-		// if(debounce_down < 0x8000) debounce_down++;
-		asm("sbrs r31, 7");
-		asm("subi r30, 0xFF");
-		asm("sbrs r31, 7");
-		asm("sbci r31, 0xFF");
-
-		// store buttonstate & debounce_up
-		asm("clr r25");
-		asm("sts buttonstate, r25");
-		asm("sts debounce_down + 0, r30");
-		asm("sts debounce_down + 1, r31");
-
-		asm("nop");
-		asm("nop");
-
-		asm("button_done:");
-	}
-	*/
-	
 	// restore r25 out here because the 10 uS block is completely packed.
 	asm("pop r25");
 
@@ -1319,12 +1334,13 @@ void ShutStuffDown() {
 	DDRD = 0x00;
 	
 	PORTB = 0x00;
-	PORTC = BUTTON_PIN; // keep the button pin pulled up so we can come out of sleep mode
+	// keep the button pins pulled up so we can come out of sleep mode
+	PORTC = (1 << BUTTON1_PIN) | (1 << BUTTON2_PIN);
 	PORTD = 0x00;
 	
 	// Disable analog comparator
 	ACSR = bit(ACD);
-	DIDR1 = 0x03;
+	//DIDR1 = 0x03;
 	
 	// Disable all external interrupts.
 	EICRA = 0;
@@ -1375,7 +1391,7 @@ void SetupLEDs() {
 
 	// Port C is our status port. (Drive C2 high to power the mic on the greenwired board)
 	DDRC = (1 << MIC_POWER);
-	PORTC = (1 << BUTTON_PIN) | (1 << MIC_POWER);
+	PORTC = (1 << BUTTON1_PIN) | (1 << BUTTON2_PIN) | (1 << MIC_POWER);
 
 	// Port D is our source port.	
 	PORTD = 0x00;
@@ -1390,7 +1406,7 @@ void SetupLEDs() {
 	PRR &= ~bit(PRADC);
 	ADMUX  = MIC_PIN | bit(ADLAR);
 	ADCSRA = bit(ADEN) | bit(ADPS2) | bit(ADPS0);
-	DIDR0 = 0x3F & ~BUTTON_PIN;
+	//DIDR0 = 0x3F & ~(1 << BUTTON1_PIN);
 
 	// Set timer 1 to tick at full speed and generate overflow interrupts.
 	PRR &= ~bit(PRTIM1);
@@ -1407,62 +1423,118 @@ void SetupLEDs() {
 }
 
 // Update button state. 27 cycles + call overhead. Uses r25, r30, r31
-__attribute__((naked)) void UpdateButton() 
+__attribute__((naked)) void UpdateButtons() 
 {
-	asm("lds r25, buttonstate");
-	asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(1));
-	asm("jmp button_down2");
+	asm("lds r25, buttonstate1");
+	asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON1_PIN));
+	asm("jmp button_down1");
 
-	asm("button_up2:");
-	asm("lds r30, debounce_up + 0");
-	asm("lds r31, debounce_up + 1");
+	asm("button_up1:");
+	asm("lds r30, debounce_up1 + 0");
+	asm("lds r31, debounce_up1 + 1");
 		
-	// if(buttonstate == 0) debounce_up = 0;
+	// if(buttonstate1 == 0) debounce_up1 = 0;
 	asm("sbrs r25, 0");
 	asm("clr r30");
 	asm("sbrs r25, 0");
 	asm("clr r31");
 
-	// if(debounce_up < 0x8000) debounce_up++;
+	// if(debounce_up1 < 0x8000) debounce_up1++;
 	asm("sbrs r31, 7");
 	asm("subi r30, 0xFF");
 	asm("sbrs r31, 7");
 	asm("sbci r31, 0xFF");
 
-	// store buttonstate & debounce_up
+	// store buttonstate1 & debounce_up1
 	asm("ldi r25, 1");
-	asm("sts buttonstate, r25");
-	asm("sts debounce_up + 0, r30");
-	asm("sts debounce_up + 1, r31");
+	asm("sts buttonstate1, r25");
+	asm("sts debounce_up1 + 0, r30");
+	asm("sts debounce_up1 + 1, r31");
+
+	asm("jmp button_done1");
+
+	asm("button_down1:");
+	asm("lds r30, debounce_down1 + 0");
+	asm("lds r31, debounce_down1 + 1");
+		
+	// if(buttonstate1 == 1) debounce_down1 = 0;
+	asm("sbrc r25, 0");
+	asm("clr r30");
+	asm("sbrc r25, 0");
+	asm("clr r31");
+
+	// if(debounce_down1 < 0x8000) debounce_down1++;
+	asm("sbrs r31, 7");
+	asm("subi r30, 0xFF");
+	asm("sbrs r31, 7");
+	asm("sbci r31, 0xFF");
+
+	// store buttonstate1 & debounce_up1
+	asm("clr r25");
+	asm("sts buttonstate1, r25");
+	asm("sts debounce_down1 + 0, r30");
+	asm("sts debounce_down1 + 1, r31");
+
+	asm("nop");
+	asm("nop");
+
+	asm("button_done1:");
+
+	asm("lds r25, buttonstate2");
+	asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON2_PIN));
+	asm("jmp button_down2");
+
+	asm("button_up2:");
+	asm("lds r30, debounce_up2 + 0");
+	asm("lds r31, debounce_up2 + 1");
+	
+	// if(buttonstate2 == 0) debounce_up2 = 0;
+	asm("sbrs r25, 0");
+	asm("clr r30");
+	asm("sbrs r25, 0");
+	asm("clr r31");
+
+	// if(debounce_up2 < 0x8000) debounce_up2++;
+	asm("sbrs r31, 7");
+	asm("subi r30, 0xFF");
+	asm("sbrs r31, 7");
+	asm("sbci r31, 0xFF");
+
+	// store buttonstate2 & debounce_up2
+	asm("ldi r25, 1");
+	asm("sts buttonstate2, r25");
+	asm("sts debounce_up2 + 0, r30");
+	asm("sts debounce_up2 + 1, r31");
 
 	asm("jmp button_done2");
 
 	asm("button_down2:");
-	asm("lds r30, debounce_down + 0");
-	asm("lds r31, debounce_down + 1");
-		
-	// if(buttonstate == 1) debounce_down = 0;
+	asm("lds r30, debounce_down2 + 0");
+	asm("lds r31, debounce_down2 + 1");
+	
+	// if(buttonstate2 == 1) debounce_down2 = 0;
 	asm("sbrc r25, 0");
 	asm("clr r30");
 	asm("sbrc r25, 0");
 	asm("clr r31");
 
-	// if(debounce_down < 0x8000) debounce_down++;
+	// if(debounce_down2 < 0x8000) debounce_down2++;
 	asm("sbrs r31, 7");
 	asm("subi r30, 0xFF");
 	asm("sbrs r31, 7");
 	asm("sbci r31, 0xFF");
 
-	// store buttonstate & debounce_up
+	// store buttonstate2 & debounce_up2
 	asm("clr r25");
-	asm("sts buttonstate, r25");
-	asm("sts debounce_down + 0, r30");
-	asm("sts debounce_down + 1, r31");
+	asm("sts buttonstate2, r25");
+	asm("sts debounce_down2 + 0, r30");
+	asm("sts debounce_down2 + 1, r31");
 
 	asm("nop");
 	asm("nop");
 
 	asm("button_done2:");
+
 	asm("ret");
 }
 
@@ -1507,9 +1579,9 @@ void GoToSleep()
 	{
 		asm("sleep");
 		
-		UpdateButton();
+		UpdateButtons();
 		
-		if((buttonstate == 0) && (debounce_down > 60))
+		if((buttonstate1 == 0) && (debounce_down1 > 60))
 		{
 			SMCR = 0;
 			WDTCSR = bit(WDCE) | bit(WDE);

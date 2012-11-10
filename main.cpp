@@ -146,17 +146,68 @@ __attribute__((naked)) void saturation_test() {
 	asm("ldi r21, 0xFF");
 }
 
+__attribute__((naked)) uint16_t fixmul2 ( uint16_t a, uint16_t b)
+{
+	// a = r25:r24
+	// b = r23:r22
+	// return = r25:r24
+	// temp: r27:r26
+	
+	asm("clr r26");
+	asm("clr r27");
+	
+	// ah * bl
+	asm("mul r25,r22");
+	asm("movw r26, r0");
+	
+	// al * bh
+	asm("mul r24, r23");
+	asm("add r26, r0");
+	asm("adc r27, r1");
+	
+	// ah * bh
+	asm("mul r25, r23");
+	asm("add r27, r0");
+	
+	// al * bl & clear r1
+	asm("mul r24, r22");
+	asm("add r26, r1");
+	asm("clr r1");
+	asm("adc r27, r1");
+
+	// done
+	asm("movw r24, r26");
+	asm("ret");
+}
+
+__attribute__((noinline)) uint16_t fixmul ( uint16_t a, uint16_t b)
+{
+	uint8_t ah = a >> 8;
+	uint8_t al = a;
+	uint8_t bh = b >> 8;
+	uint8_t bl = b;
+	
+	uint16_t out1 = (al * bl) >> 8;
+	uint16_t out2 = (al * bh);
+	uint16_t out3 = (ah * bl);
+	uint16_t out4 = (ah * bh) << 8;
+	
+	return out1 + out2 + out3 + out4;
+}	
+
 
 int main(void)
 {
 	SetupLEDs();
 	
 	while(1) {
-		//white();
-		pov_test2();
-		swap();
-		/*
-		if((buttonstate == 0) && (debounce_down > 16384)) {
+		//clear();
+		//button_test();
+		//swap();
+		//continue;
+		
+		
+		if((buttonstate1 == 0) && (debounce_down1 > 16384)) {
 			uint32_t old_tick = led_tick;
 			for(int i = 0; i < 8; i++) { backup[i] = pixels[i]; }
 			for(uint16_t i = 0; i < 256; i++) {
@@ -169,7 +220,7 @@ int main(void)
 				for(int j = 0; j < 13; j++) swap();
 			}
 			// wait for button release before going to sleep
-			while(buttonstate == 0);
+			while(buttonstate1 == 0);
 			GoToSleep();
 			
 			for(uint16_t i = 0; i < 256; i++) {
@@ -182,21 +233,20 @@ int main(void)
 				for(int j = 0; j < 13; j++) swap();
 			}
 			led_tick = old_tick;
-			while(buttonstate == 0);
-			debounce_down = 0;
-			debounce_up = 0;
+			while(buttonstate1 == 0);
+			debounce_down1 = 0;
+			debounce_up1 = 0;
 		}
 		
-		if((buttonstate == 1) && (debounce_down > 256)) {
+		if((buttonstate1 == 1) && (debounce_down1 > 256)) {
 			//pattern_callback = red_test;
 			pattern_index = (pattern_index + 1) % 13;
-			debounce_down = 0;
+			debounce_down1 = 0;
 		}
 		
 		clear();
 		patterns[pattern_index]();
 		swap();
-		*/
 	}		
 }
 

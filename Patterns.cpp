@@ -334,12 +334,14 @@ __attribute__((noinline)) uint8_t rng()
 	return y;
 }
 
-
-
 void button_test() {
 	clear();
-	for(int i = 0; i < 8; i++) {
-		if(PINC & 0x02) pixels[i].g = 0xFF;
+	for(int i = 0; i < 4; i++) {
+		if(buttonstate1) pixels[i].g = 0xFF;
+		else pixels[i].r = 0xFF;
+	}
+	for(int i = 4; i < 8; i++) {
+		if(buttonstate2) pixels[i].g = 0xFF;
 		else pixels[i].r = 0xFF;
 	}
 }
