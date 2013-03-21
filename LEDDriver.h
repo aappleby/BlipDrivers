@@ -1,11 +1,13 @@
 #ifndef LEDDRIVER_H_
 #define LEDDRIVER_H_
 
+#include "Config.h"
+
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+  #endif
 
 void SetupLEDs();
 
@@ -47,14 +49,5 @@ extern uint16_t ibright2;
 #ifdef __cplusplus
 }
 #endif
-
-inline uint8_t fade (uint8_t a, uint8_t b) {
-	return (a * b) >> 8;
-}
-
-inline uint8_t crossfade (uint8_t a, uint8_t b, uint8_t alpha) {
-	return (a*alpha + b*(255-alpha)) >> 8;
-}	
-
 
 #endif

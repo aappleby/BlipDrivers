@@ -1,3 +1,8 @@
 Debug
 Release
+notes
+ipch
 *.atsuo
+*.sdf
+*.suo
+*.vcxproj.user

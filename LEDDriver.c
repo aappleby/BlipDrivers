@@ -1,252 +1,45 @@
 #include "LEDDriver.h"
-
-#ifndef F_CPU
-#define F_CPU 8000000
-#endif
+#include "Bits.h"
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
 #include <avr/sleep.h>
 
-#define BOARDTYPE_POVLACE1
-
-// fuses for ATMega328p -
-// low:      0xE2
-// high:     0xDA
-// extended: 0xFF
-
 //-----------------------------------------------------------------------------
-// board configs
+// Externally-visible data.
 
-/*
-// prototype 2 settings
-#define PORT_SOURCE PORTD
-#define PORT_SINK DDRB
-#define SINK_GREEN 0x0C
-#define SINK_RED 0x12
-#define SINK_BLUE 0x01;
-*/
-
-//-----------------------------------------------------------------------------
-// prototype 3 settings
-/*
-#define DIR_SOURCE  DDRD
-#define DIR_SINK    DDRB
-#define DIR_STATUS  DDRC
-
-#define PORT_SOURCE PORTD
-#define PORT_SINK   PORTB
-#define PORT_STATUS PORTC
-
-#define SOURCE_1 0x02
-#define SOURCE_2 0x04
-#define SOURCE_3 0x01
-#define SOURCE_4 0x08
-#define SOURCE_5 0x40
-#define SOURCE_6 0x10
-#define SOURCE_7 0x20
-#define SOURCE_8 0x80
-
-#define ADC_CHANNEL 1
-
-#define SINK_RED   0x7D  // (~((1 << 1) | (1 << 7)))
-#define SINK_GREEN 0xB3  // (~((1 << 2) | (1 << 3) | (1 << 6)))
-#define SINK_BLUE  0xFE  // (~((1 << 0)))
-*/
-
-//-----------------------------------------------------------------------------
-// test board from OSH Park
-
-#ifdef BOARDTYPE_PROTO1
-#define DIR_SOURCE  DDRD
-#define DIR_SINK    DDRB
-#define DIR_STATUS  DDRC
-
-#define PORT_SOURCE PORTD
-#define PORT_SINK   PORTB
-#define PORT_STATUS PORTC
-
-#define ADC_CHANNEL 0
-
-#define SOURCE_1 0x02
-#define SOURCE_2 0x04
-#define SOURCE_3 0x01
-#define SOURCE_4 0x08
-#define SOURCE_5 0x10
-#define SOURCE_6 0x40
-#define SOURCE_7 0x20
-#define SOURCE_8 0x80
-
-#define SINK_RED   0xF1  // (~((1 << 1) | (1 << 7)))
-#define SINK_GREEN 0x6E  // (~((1 << 2) | (1 << 3) | (1 << 6)))
-#define SINK_BLUE  0x9F  // (~((1 << 0)))
-
-#define BUTTON1_PIN 1
-
-#define MIC_POWER 7
-#define MIC_PIN 0
-#endif
-
-//-----------------------------------------------------------------------------
-// test board from OSH Park 2
-
-#ifdef BOARDTYPE_PROTO2
-#define DIR_SOURCE  DDRD
-#define DIR_SINK    DDRB
-#define DIR_STATUS  DDRC
-
-#define PORT_SOURCE PORTD
-#define PORT_SINK   PORTB
-#define PORT_STATUS PORTC
-
-#define ADC_CHANNEL 0
-
-#define SOURCE_1 0x02
-#define SOURCE_2 0x04
-#define SOURCE_3 0x01
-#define SOURCE_4 0x08
-#define SOURCE_5 0x10
-#define SOURCE_6 0x40
-#define SOURCE_7 0x20
-#define SOURCE_8 0x80
-
-#define SINK_RED 0x6E
-#define SINK_GREEN 0xF1
-#define SINK_BLUE 0x9F
-
-#define BUTTON1_PIN 1
-#define BUTTON2_PIN 1
-
-#define MIC_POWER 2
-#define MIC_PIN 7
-#endif
-
-//-----------------------------------------------------------------------------
-// test board from OSH Park 3
-
-#ifdef BOARDTYPE_PROTO3
-#define DIR_SOURCE  DDRD
-#define DIR_SINK    DDRB
-#define DIR_STATUS  DDRC
-
-#define PORT_SOURCE PORTD
-#define PORT_SINK   PORTB
-#define PORT_STATUS PORTC
-
-#define ADC_CHANNEL 0
-
-#define SOURCE_1 0x02
-#define SOURCE_2 0x04
-#define SOURCE_3 0x01
-#define SOURCE_4 0x08
-#define SOURCE_5 0x10
-#define SOURCE_6 0x40
-#define SOURCE_7 0x20
-#define SOURCE_8 0x80
-
-#define SINK_RED 0x6E
-#define SINK_GREEN 0xF1
-#define SINK_BLUE 0x9F
-
-#define BUTTON1_PIN 3
-#define BUTTON2_PIN 4
-
-#define MIC_POWER 2
-#define MIC_PIN 7
-#endif
-
-//-----------------------------------------------------------------------------
-// POVLace 1
-
-#ifdef BOARDTYPE_POVLACE1
-#define DIR_SOURCE  DDRD
-#define DIR_SINK    DDRB
-#define DIR_STATUS  DDRC
-
-#define PORT_SOURCE PORTD
-#define PORT_SINK   PORTB
-#define PORT_STATUS PORTC
-
-#define SOURCE_1 0x02
-#define SOURCE_2 0x04
-#define SOURCE_3 0x01
-#define SOURCE_4 0x08
-#define SOURCE_5 0x10
-#define SOURCE_6 0x40
-#define SOURCE_7 0x20
-#define SOURCE_8 0x80
-
-#define SINK_RED   0xDE
-#define SINK_GREEN 0xED
-#define SINK_BLUE  0xF3
-
-#define MIC_PIN 7
-#define MIC_POWER 2
-#define BUTTON1_PIN 3
-#define BUTTON2_PIN 3
-#endif
-
-//-----------------------------------------------------------------------------
-
-#define bit(A)   (1 << A)
-#define sbi(p,b) { p |= (unsigned char)bit(b); }
-#define cbi(p,b) { p &= (unsigned char)~bit(b); }
-#define tbi(p,b) { p ^= (unsigned char)bit(b); }
-#define gbi(p,b) (p & (unsigned char)bit(b))
-
-#define lo8(A) (((uint16_t)A) & 0xFF)
-#define hi8(A) (((uint16_t)A) >> 8)
-
-//-----------------------------------------------------------------------------
-// audio processing configs
-
-#define TRIG1_CLAMP  60
-#define BRIGHT1_UP   (65535 / 30)
-#define BRIGHT1_DOWN (65535 / 300)
-
-#define TRIG2_CLAMP  60
-#define BRIGHT2_UP   (65535 / 40)
-#define BRIGHT2_DOWN (65535 / 700)
-
-//-----------------------------------------------------------------------------
-
-const uint8_t sources[] PROGMEM =
-{
-	SOURCE_1, SOURCE_2, SOURCE_3, SOURCE_4,	SOURCE_5, SOURCE_6, SOURCE_7,
-	SOURCE_8, SOURCE_7, SOURCE_6, SOURCE_5, SOURCE_4, SOURCE_3, SOURCE_2,
-};
-
-// Front buffer
-uint8_t bits_RF[8];
-uint8_t bits_GF[8];
-uint8_t bits_BF[8];
-
-uint8_t bits_RF2[8];
-uint8_t bits_GF2[8];
-uint8_t bits_BF2[8];
-
-uint8_t bits_RF3[8];
-uint8_t bits_GF3[8];
-uint8_t bits_BF3[8];
-
-/*
-uint8_t r[8];
-uint8_t g[8];
-uint8_t b[8];
-*/
-
+// Back buffer, standard RGB format.
 struct Pixel pixels[8];
 
-// Blanking interval
+// Blanking interval flag.
 volatile uint8_t blank;
 
 // PWM cycle tick, 4.096 kilohertz.
 uint32_t led_tick;
 
-// PWM callback function pointer dispatched by the timer interrupt.
-void (*timer_callback)() ;
+// Output brightness, treble channel
+uint8_t bright1 = 0;
+
+// Output brightness, bass channel
+uint8_t bright2 = 0;
+
+// Button debounce counters
+volatile uint8_t buttonstate1 = 0;
+volatile uint16_t debounce_up1 = 0;
+volatile uint16_t debounce_down1 = 0;
+
+volatile uint8_t buttonstate2 = 0;
+volatile uint16_t debounce_up2 = 0;
+volatile uint16_t debounce_down2 = 0;
 
 //-----------------------------------------------------------------------------
+// Internal data
+
+// Front buffer, bit-planes format.
+uint8_t bits_RF[8];
+uint8_t bits_GF[8];
+uint8_t bits_BF[8];
+
 // Treble channel trigger value
 uint16_t tmax1;
 
@@ -271,67 +64,41 @@ uint16_t ibright1;
 // Brightness cursor, bass channel.
 uint16_t ibright2;
 
-// Brightness accumulator, treble channel/
+// Brightness accumulator, treble channel.
 uint16_t brightaccum1 = 0;
 
 // Brightness accumulator, bass channel.
 uint16_t brightaccum2 = 0;
 
-// Output brightness, treble channel
-uint8_t bright1 = 0;
-
-// Output brightness, bass channel
-uint8_t bright2 = 0;
-
 // Internal tick count to trigger volume adaptation every 64 cycles.
 uint8_t tickcount = 0;
 
-// Button debounce counters
-volatile uint8_t buttonstate1 = 0;
-volatile uint16_t debounce_up1 = 0;
-volatile uint16_t debounce_down1 = 0;
-
-volatile uint8_t buttonstate2 = 0;
-volatile uint16_t debounce_up2 = 0;
-volatile uint16_t debounce_down2 = 0;
-
-//-----------------------------------------------------------------------------
-
-const uint8_t exptab[256] PROGMEM =
-{
-0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,5,5,
-5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,8,9,9,9,9,9,10,10,10,
-10,10,11,11,11,11,12,12,12,12,13,13,13,14,14,14,14,15,15,15,16,16,16,17,
-17,18,18,18,19,19,20,20,21,21,21,22,22,23,23,24,24,25,25,26,27,27,28,28,
-29,30,30,31,32,32,33,34,35,35,36,37,38,39,39,40,41,42,43,44,45,46,47,48,
-49,50,51,52,53,55,56,57,58,59,61,62,63,65,66,68,69,71,72,74,76,77,79,81,
-82,84,86,88,90,92,94,96,98,100,102,105,107,109,112,114,117,119,122,124,
-127,130,133,136,139,142,145,148,151,155,158,162,165,169,172,176,180,184,
-188,192,196,201,205,210,214,219,224,229,234,239,244,250,255,
-};
-
-// numeric brightness -> perceived brightness
-
-const uint8_t gammatab[256] PROGMEM = 
-{
-0,15,22,27,31,35,39,42,45,47,50,52,55,57,59,61,63,65,67,69,71,73,74,76,78,79,
-81,82,84,85,87,88,90,91,93,94,95,97,98,99,100,102,103,104,105,107,108,109,110,
-111,112,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,
-131,132,133,134,135,136,137,138,139,140,141,141,142,143,144,145,146,147,148,
-148,149,150,151,152,153,153,154,155,156,157,158,158,159,160,161,162,162,163,
-164,165,165,166,167,168,168,169,170,171,171,172,173,174,174,175,176,177,177,
-178,179,179,180,181,182,182,183,184,184,185,186,186,187,188,188,189,190,190,
-191,192,192,193,194,194,195,196,196,197,198,198,199,200,200,201,201,202,203,
-203,204,205,205,206,206,207,208,208,209,210,210,211,211,212,213,213,214,214,
-215,216,216,217,217,218,218,219,220,220,221,221,222,222,223,224,224,225,225,
-226,226,227,228,228,229,229,230,230,231,231,232,233,233,234,234,235,235,236,
-236,237,237,238,238,239,240,240,241,241,242,242,243,243,244,244,245,245,246,
-246,247,247,248,248,249,249,250,250,251,251,252,252,253,253,254,255,
-};
+// PWM callback function pointer dispatched by the timer interrupt.
+void (*timer_callback)() ;
 
 //------------------------------------------------------------------------------
-// New interrupt handlers
+// Timer callback interrupt, dispatches our LED update callback. Note that we
+// _ijmp_ to the callback, and _reti_ from the callback - this saves a few
+// cycles per interrupt.
+
+ISR(TIMER1_OVF_vect, ISR_NAKED)
+{
+  // We're clobbering R30 and R31, so we are required to save them.
+  asm("push r30");
+  asm("push r31");
+  
+  // We also have to save the status register.
+  asm("in r30, 0x3f");
+  asm("push r30");
+  
+  // Call interrupt callback
+  asm("lds r30, timer_callback");
+  asm("lds r31, timer_callback+1");
+  asm("ijmp");
+}
+
+//------------------------------------------------------------------------------
+// Interrupt handlers
 
 #define TIMEOUT_6R (65536 - 127)
 #define TIMEOUT_6G (65536 - 127)
@@ -1246,18 +1013,123 @@ __attribute__((naked)) void bits_blue_7() {
 }	
 
 //------------------------------------------------------------------------------
+// Update button state. 27 cycles + call overhead. Uses r25, r30, r31
+// This is separate from the LED interrupt handlers as we also need to be able
+// to call it from our sleep mode watchdog interrupt.
 
-ISR(TIMER1_OVF_vect, ISR_NAKED)
+__attribute__((naked)) void UpdateButtons()
 {
-	asm("push r30");
-	asm("push r31");
-	asm("in r30, 0x3f");
-	asm("push r30");
- 
-	// Call interrupt callback
-	asm("lds r30, timer_callback");
-	asm("lds r31, timer_callback+1");
-	asm("ijmp");
+  asm("lds r25, buttonstate1");
+  asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON1_PIN));
+  asm("jmp button_down1");
+
+  asm("button_up1:");
+  asm("lds r30, debounce_up1 + 0");
+  asm("lds r31, debounce_up1 + 1");
+  
+  // if(buttonstate1 == 0) debounce_up1 = 0;
+  asm("sbrs r25, 0");
+  asm("clr r30");
+  asm("sbrs r25, 0");
+  asm("clr r31");
+
+  // if(debounce_up1 < 0x8000) debounce_up1++;
+  asm("sbrs r31, 7");
+  asm("subi r30, 0xFF");
+  asm("sbrs r31, 7");
+  asm("sbci r31, 0xFF");
+
+  // store buttonstate1 & debounce_up1
+  asm("ldi r25, 1");
+  asm("sts buttonstate1, r25");
+  asm("sts debounce_up1 + 0, r30");
+  asm("sts debounce_up1 + 1, r31");
+
+  asm("jmp button_done1");
+
+  asm("button_down1:");
+  asm("lds r30, debounce_down1 + 0");
+  asm("lds r31, debounce_down1 + 1");
+  
+  // if(buttonstate1 == 1) debounce_down1 = 0;
+  asm("sbrc r25, 0");
+  asm("clr r30");
+  asm("sbrc r25, 0");
+  asm("clr r31");
+
+  // if(debounce_down1 < 0x8000) debounce_down1++;
+  asm("sbrs r31, 7");
+  asm("subi r30, 0xFF");
+  asm("sbrs r31, 7");
+  asm("sbci r31, 0xFF");
+
+  // store buttonstate1 & debounce_up1
+  asm("clr r25");
+  asm("sts buttonstate1, r25");
+  asm("sts debounce_down1 + 0, r30");
+  asm("sts debounce_down1 + 1, r31");
+
+  asm("nop");
+  asm("nop");
+
+  asm("button_done1:");
+
+  asm("lds r25, buttonstate2");
+  asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON2_PIN));
+  asm("jmp button_down2");
+
+  asm("button_up2:");
+  asm("lds r30, debounce_up2 + 0");
+  asm("lds r31, debounce_up2 + 1");
+  
+  // if(buttonstate2 == 0) debounce_up2 = 0;
+  asm("sbrs r25, 0");
+  asm("clr r30");
+  asm("sbrs r25, 0");
+  asm("clr r31");
+
+  // if(debounce_up2 < 0x8000) debounce_up2++;
+  asm("sbrs r31, 7");
+  asm("subi r30, 0xFF");
+  asm("sbrs r31, 7");
+  asm("sbci r31, 0xFF");
+
+  // store buttonstate2 & debounce_up2
+  asm("ldi r25, 1");
+  asm("sts buttonstate2, r25");
+  asm("sts debounce_up2 + 0, r30");
+  asm("sts debounce_up2 + 1, r31");
+
+  asm("jmp button_done2");
+
+  asm("button_down2:");
+  asm("lds r30, debounce_down2 + 0");
+  asm("lds r31, debounce_down2 + 1");
+  
+  // if(buttonstate2 == 1) debounce_down2 = 0;
+  asm("sbrc r25, 0");
+  asm("clr r30");
+  asm("sbrc r25, 0");
+  asm("clr r31");
+
+  // if(debounce_down2 < 0x8000) debounce_down2++;
+  asm("sbrs r31, 7");
+  asm("subi r30, 0xFF");
+  asm("sbrs r31, 7");
+  asm("sbci r31, 0xFF");
+
+  // store buttonstate2 & debounce_up2
+  asm("clr r25");
+  asm("sts buttonstate2, r25");
+  asm("sts debounce_down2 + 0, r30");
+  asm("sts debounce_down2 + 1, r31");
+
+  asm("nop");
+  asm("nop");
+
+  asm("button_done2:");
+
+  asm("ret");
 }
 
 //------------------------------------------------------------------------------
@@ -1274,6 +1146,9 @@ __attribute__((naked)) void swap4c(uint8_t* vin, uint8_t* vout) {
 
 	asm("movw r30, r24");
 	asm("movw r26, r22");
+  
+  // The constants on the right here map from logical LED order to physical
+  // order. They should probably be moved to config.h
 
 	asm("ldd r18, z+%0*3" : : "X"(2));
 	asm("ldd r19, z+%0*3" : : "X"(0));
@@ -1312,14 +1187,14 @@ void swap() {
 }
 
 __attribute__((naked)) void clear() {
-	asm("sts pixels +  0, r1"); asm("sts pixels +  1, r1"); asm("sts pixels +  2, r1"); 
-	asm("sts pixels +  3, r1"); asm("sts pixels +  4, r1"); asm("sts pixels +  5, r1"); 
-	asm("sts pixels +  6, r1"); asm("sts pixels +  7, r1"); asm("sts pixels +  8, r1"); 
-	asm("sts pixels +  9, r1"); asm("sts pixels + 10, r1"); asm("sts pixels + 11, r1"); 
-	asm("sts pixels + 12, r1"); asm("sts pixels + 13, r1"); asm("sts pixels + 14, r1"); 
-	asm("sts pixels + 15, r1"); asm("sts pixels + 16, r1"); asm("sts pixels + 17, r1"); 
-	asm("sts pixels + 18, r1"); asm("sts pixels + 19, r1"); asm("sts pixels + 20, r1"); 
-	asm("sts pixels + 21, r1"); asm("sts pixels + 22, r1"); asm("sts pixels + 23, r1"); 
+	asm("sts pixels +  0, r1"); asm("sts pixels +  1, r1"); asm("sts pixels +  2, r1");
+	asm("sts pixels +  3, r1"); asm("sts pixels +  4, r1"); asm("sts pixels +  5, r1");
+	asm("sts pixels +  6, r1"); asm("sts pixels +  7, r1"); asm("sts pixels +  8, r1");
+	asm("sts pixels +  9, r1"); asm("sts pixels + 10, r1"); asm("sts pixels + 11, r1");
+	asm("sts pixels + 12, r1"); asm("sts pixels + 13, r1"); asm("sts pixels + 14, r1");
+	asm("sts pixels + 15, r1"); asm("sts pixels + 16, r1"); asm("sts pixels + 17, r1");
+	asm("sts pixels + 18, r1"); asm("sts pixels + 19, r1"); asm("sts pixels + 20, r1");
+	asm("sts pixels + 21, r1"); asm("sts pixels + 22, r1"); asm("sts pixels + 23, r1");
 	asm("ret");
 }
 
@@ -1422,183 +1297,3 @@ void SetupLEDs() {
 
 }
 
-// Update button state. 27 cycles + call overhead. Uses r25, r30, r31
-__attribute__((naked)) void UpdateButtons() 
-{
-	asm("lds r25, buttonstate1");
-	asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON1_PIN));
-	asm("jmp button_down1");
-
-	asm("button_up1:");
-	asm("lds r30, debounce_up1 + 0");
-	asm("lds r31, debounce_up1 + 1");
-		
-	// if(buttonstate1 == 0) debounce_up1 = 0;
-	asm("sbrs r25, 0");
-	asm("clr r30");
-	asm("sbrs r25, 0");
-	asm("clr r31");
-
-	// if(debounce_up1 < 0x8000) debounce_up1++;
-	asm("sbrs r31, 7");
-	asm("subi r30, 0xFF");
-	asm("sbrs r31, 7");
-	asm("sbci r31, 0xFF");
-
-	// store buttonstate1 & debounce_up1
-	asm("ldi r25, 1");
-	asm("sts buttonstate1, r25");
-	asm("sts debounce_up1 + 0, r30");
-	asm("sts debounce_up1 + 1, r31");
-
-	asm("jmp button_done1");
-
-	asm("button_down1:");
-	asm("lds r30, debounce_down1 + 0");
-	asm("lds r31, debounce_down1 + 1");
-		
-	// if(buttonstate1 == 1) debounce_down1 = 0;
-	asm("sbrc r25, 0");
-	asm("clr r30");
-	asm("sbrc r25, 0");
-	asm("clr r31");
-
-	// if(debounce_down1 < 0x8000) debounce_down1++;
-	asm("sbrs r31, 7");
-	asm("subi r30, 0xFF");
-	asm("sbrs r31, 7");
-	asm("sbci r31, 0xFF");
-
-	// store buttonstate1 & debounce_up1
-	asm("clr r25");
-	asm("sts buttonstate1, r25");
-	asm("sts debounce_down1 + 0, r30");
-	asm("sts debounce_down1 + 1, r31");
-
-	asm("nop");
-	asm("nop");
-
-	asm("button_done1:");
-
-	asm("lds r25, buttonstate2");
-	asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON2_PIN));
-	asm("jmp button_down2");
-
-	asm("button_up2:");
-	asm("lds r30, debounce_up2 + 0");
-	asm("lds r31, debounce_up2 + 1");
-	
-	// if(buttonstate2 == 0) debounce_up2 = 0;
-	asm("sbrs r25, 0");
-	asm("clr r30");
-	asm("sbrs r25, 0");
-	asm("clr r31");
-
-	// if(debounce_up2 < 0x8000) debounce_up2++;
-	asm("sbrs r31, 7");
-	asm("subi r30, 0xFF");
-	asm("sbrs r31, 7");
-	asm("sbci r31, 0xFF");
-
-	// store buttonstate2 & debounce_up2
-	asm("ldi r25, 1");
-	asm("sts buttonstate2, r25");
-	asm("sts debounce_up2 + 0, r30");
-	asm("sts debounce_up2 + 1, r31");
-
-	asm("jmp button_done2");
-
-	asm("button_down2:");
-	asm("lds r30, debounce_down2 + 0");
-	asm("lds r31, debounce_down2 + 1");
-	
-	// if(buttonstate2 == 1) debounce_down2 = 0;
-	asm("sbrc r25, 0");
-	asm("clr r30");
-	asm("sbrc r25, 0");
-	asm("clr r31");
-
-	// if(debounce_down2 < 0x8000) debounce_down2++;
-	asm("sbrs r31, 7");
-	asm("subi r30, 0xFF");
-	asm("sbrs r31, 7");
-	asm("sbci r31, 0xFF");
-
-	// store buttonstate2 & debounce_up2
-	asm("clr r25");
-	asm("sts buttonstate2, r25");
-	asm("sts debounce_down2 + 0, r30");
-	asm("sts debounce_down2 + 1, r31");
-
-	asm("nop");
-	asm("nop");
-
-	asm("button_done2:");
-
-	asm("ret");
-}
-
-
-const uint8_t gammasin2[] PROGMEM =
-{
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	1,1,1,1,1,2,2,2,2,3,3,4,4,5,5,6,7,8,9,9,10,
-	11,13,14,15,16,18,19,21,23,24,26,28,30,32,34,37,39,41,44,46,49,52,55,58,61,
-	64,67,70,73,77,80,84,87,91,95,98,102,106,110,114,118,122,126,130,134,138,142,146,
-	150,154,158,162,166,170,174,178,182,186,190,193,197,200,204,207,211,214,217,220,
-	223,226,228,231,234,236,238,240,242,244,246,247,249,250,251,252,253,254,254,255,
-	255,255,255,255,254,254,253,252,251,250,249,247,246,244,242,240,238,236,234,231,
-	228,226,223,220,217,214,211,207,204,200,197,193,190,186,182,178,174,170,166,162,
-	158,154,150,146,142,138,134,130,126,122,118,114,110,106,102,98,95,91,87,84,80,77,
-	73,70,67,64,61,58,55,52,49,46,44,41,39,37,34,32,30,28,26,24,23,21,19,18,16,15,14,
-	13,11,10,9,9,8,7,6,5,5,4,4,3,3,2,2,2,2,1,1,1,1,1,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-};
-
-// watchdog interrupt has to exist or the chip resets.
-ISR(WDT_vect) {}
-
-void GoToSleep()
-{
-	uint8_t cursor = 0;
-	uint8_t column = 0;
-
-	ShutStuffDown();
-	sleep_bod_disable();
-
-	SMCR = bit(SE) | bit(SM1);
-	WDTCSR = bit(WDCE) | bit(WDE);
-	WDTCSR = bit(WDIE);
-	
-	DDRD = 0xFF;
-	PORTD = 0x00;
-	DDRB = 0xFF;
-	PORTB = SINK_GREEN;
-	
-	while(1)
-	{
-		asm("sleep");
-		
-		UpdateButtons();
-		
-		if((buttonstate1 == 0) && (debounce_down1 > 60))
-		{
-			SMCR = 0;
-			WDTCSR = bit(WDCE) | bit(WDE);
-			WDTCSR = 0;
-			SetupLEDs();
-			return;
-		}
-
-		uint8_t bright = pgm_read_byte(gammasin2 + cursor) >> 2;
-		if(bright) 
-		{
-			PORTD = pgm_read_byte(sources + column);
-			for(uint8_t i = 0; i < bright; i++) { asm("nop"); }
-			PORTD = 0;
-		}
-	
-		cursor += 1;
-		if(cursor == 0) column = (column == 13) ? 0 : column + 1;
-	}
-}
