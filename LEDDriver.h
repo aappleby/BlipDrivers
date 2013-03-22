@@ -18,10 +18,15 @@ struct Pixel {
 };
 
 extern struct Pixel pixels[8];
-void swap();
+
+// Swap immediately.
+void blip_swap();
+
+// Swap w/ a fixed refresh rate of 64 hz.
+void blip_swap64();
 void clear();
 
-extern uint32_t led_tick; // 4.096 khz
+extern uint32_t blip_tick; // 4.096 khz
 
 // Button debounce counters
 extern volatile uint8_t buttonstate1;

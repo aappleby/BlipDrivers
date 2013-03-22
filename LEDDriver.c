@@ -11,11 +11,8 @@
 // Back buffer, standard RGB format.
 struct Pixel pixels[8];
 
-// Blanking interval flag.
-volatile uint8_t blank;
-
 // PWM cycle tick, 4.096 kilohertz.
-uint32_t led_tick;
+uint32_t blip_tick;
 
 // Output brightness, treble channel
 uint8_t bright1 = 0;
@@ -39,6 +36,9 @@ volatile uint16_t debounce_down2 = 0;
 uint8_t bits_RF[8];
 uint8_t bits_GF[8];
 uint8_t bits_BF[8];
+
+// Blanking interval flag.
+volatile uint8_t blank;
 
 // Treble channel trigger value
 uint16_t tmax1;
@@ -601,17 +601,17 @@ __attribute__((naked)) void bits_green_6() {
 	// increment LED tick, 21 cycles
 	{
 		asm("clr r25");
-		asm("lds r28, led_tick+0");
-		asm("lds r29, led_tick+1");
-		asm("lds r30, led_tick+2");
-		asm("lds r31, led_tick+3");
+		asm("lds r28, blip_tick+0");
+		asm("lds r29, blip_tick+1");
+		asm("lds r30, blip_tick+2");
+		asm("lds r31, blip_tick+3");
 		asm("adiw r28, 0x01");
 		asm("adc r30, r25");
 		asm("adc r31, r25");
-		asm("sts led_tick+0, r28");
-		asm("sts led_tick+1, r29");
-		asm("sts led_tick+2, r30");
-		asm("sts led_tick+3, r31");
+		asm("sts blip_tick+0, r28");
+		asm("sts blip_tick+1, r29");
+		asm("sts blip_tick+2, r30");
+		asm("sts blip_tick+3, r31");
 	}
 	asm("nop"); asm("nop");
 	
@@ -1177,7 +1177,7 @@ __attribute__((naked)) void swap4c(uint8_t* vin, uint8_t* vout) {
 	asm("ret");
 }
 
-void swap() {
+void blip_swap() {
 	while(blank);
 	while(!blank);
 	
@@ -1185,6 +1185,11 @@ void swap() {
 	swap4c(&pixels[0].g, bits_GF);
 	swap4c(&pixels[0].b, bits_BF);
 }
+
+void blip_swap64() {
+  while (blip_tick & 63) {};
+  blip_swap();
+}  
 
 __attribute__((naked)) void clear() {
 	asm("sts pixels +  0, r1"); asm("sts pixels +  1, r1"); asm("sts pixels +  2, r1");

@@ -75,7 +75,7 @@ void FadeOutAndSleep()
 {
   Pixel backup[8];
   
-  uint32_t old_tick = led_tick;
+  uint32_t old_tick = blip_tick;
   for(int i = 0; i < 8; i++)
   {
     backup[i] = pixels[i];
@@ -89,7 +89,7 @@ void FadeOutAndSleep()
     }
     for(int j = 0; j < 13; j++)
     {
-      swap();
+      blip_swap();
     }
   }
   // wait for button release before going to sleep
@@ -107,10 +107,10 @@ void FadeOutAndSleep()
     }
     for(int j = 0; j < 13; j++)
     {
-      swap();
+      blip_swap();
     }
   }
-  led_tick = old_tick;
+  blip_tick = old_tick;
   while(buttonstate1 == 0);
   debounce_down1 = 0;
   debounce_up1 = 0;

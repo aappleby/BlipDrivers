@@ -1,11 +1,3 @@
-/*
- * Bobs.h
- *
- * Created: 3/8/2013 8:58:10 PM
- *  Author: aappleby
- */ 
-
-
 #ifndef BOBS_H_
 #define BOBS_H_
 
@@ -26,4 +18,4 @@ public:
 
 
 
-#endif /* BOBS_H_ */
+#endif
