@@ -165,6 +165,12 @@
     <Compile Include="main.cpp">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Math.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Math.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Patterns.cpp">
       <SubType>compile</SubType>
     </Compile>
