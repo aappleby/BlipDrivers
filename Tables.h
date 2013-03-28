@@ -27,5 +27,6 @@ extern const uint8_t pulse_2_6[256] PROGMEM;
 extern const uint8_t gamma_2_2[256] PROGMEM;
 
 extern const uint8_t noise[256] PROGMEM;
+extern const uint8_t huetab[256] PROGMEM;
 
 #endif

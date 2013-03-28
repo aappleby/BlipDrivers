@@ -1,7 +1,7 @@
 // tables.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
+#include <stdio.h>
 #include <math.h>
 #include <assert.h>
 
@@ -23,16 +23,18 @@ void quadlerp() {
 
   for(int j = 0; j < 10; j++) {
 
-    double a = numbers[j + 1];
-    double b = (numbers[j + 1] + numbers[j + 3]) / 2;
-    double c = (numbers[j + 0] + numbers[j + 2]) / 2;
-    double d = numbers[j + 2];
+    double a = (numbers[j + 0] + numbers[j + 1]) / 2;
+    double b = numbers[j + 1];
+    double c = (numbers[j + 1] + numbers[j + 2]) / 2;
 
     for(int i = 0; i < 20; i++) {
       double t = double(i) / 20.0;
 
-      double f = ((a - b - c + d) * t * t) + (-2*a + b + c)*t + a;
-      printf("%f\n", f);
+      double e = a + (b-a) * t;
+      double f = b + (c-b) * t;
+      double g = e + (f-e) * t;
+
+      printf("%f\n", g);
     }
   }
 }
@@ -58,7 +60,23 @@ void cubelerp() {
   }
 }
 
+void tabprint8(uint8_t d, int i) {
+  char buf[16];
+  sprintf(buf, "%3d", d);
+  printf("%s, ", buf);
+  if(i % 16 == 15) {
+    printf("\n");
+  }
+}
 
+void tabprint16(uint16_t d, int i) {
+  char buf[16];
+  sprintf(buf, "%5d", d);
+  printf("%s, ", buf);
+  if(i % 16 == 15) {
+    printf("\n");
+  }
+}
 
 void pulsetab() {
   uint8_t tab[256];
@@ -72,11 +90,7 @@ void pulsetab() {
 
     uint8_t x = floor(s * 255.0 + 0.5);
     tab[i] = x;
-    sprintf(buf, "%3d", x);
-    printf("%s, ", buf);
-    if(i % 16 == 15) {
-      printf("\n");
-    }
+    tabprint8(x, i);
   }
 
   for(int j = 0; j < 16; j++) {
@@ -127,60 +141,64 @@ uint8_t square3(uint8_t v) {
   }
 }
 
-uint8_t ciesin(uint8_t v) {
-  float t = (v - 64.0) / 256.0;
-  float s = sin(2 * 3.14159265358979323846264338327950288419716939937510 * t);
-  float l = (s + 1) / 2;
-  l *= 100.0;
-  if(l <= 8) {
-    float y = (l / 902.3);
-    y *= 255.0;
-    return (uint8_t)y;
+double lum_to_cie(double l) {
+  if(l <= 0.08) {
+    return (100.0 * l / 902.3);
   } else  {
-    float y = (l + 16.0) / 116.0;
+    float y = (100.0 * l + 16.0) / 116.0;
     y = y*y*y;
-    y *= 255.0;
-    return (uint8_t)y;
+    return y;
+  }
+}
+
+double cie_to_lum(double y) {
+  if (y < 0.008856) {
+    return (903.3 * y) / 100.0;
+  } else {
+    return (116 * pow(y, 1.0 / 3.0) - 16) / 100.0;
+  }
+}
+
+void huetab() {
+  char buf[256];
+  for(int i = 0; i < 256; i++) {
+    float s = 6.0 * float(i) / 256.0;
+    int h = (int)s;
+    float t = fmod(s, 1.0f);
+    switch(h) {
+    case 0: break;
+    case 1: t = 1.0; break;
+    case 2: t = 1.0; break;
+    case 3: t = 1.0 - t; break;
+    case 4: t = 0; break;
+    case 5: t = 0; break;
+    };
+    tabprint8(floor(t * 255.0 _ 0.5));
+  }
+}
+
+void s1p14_to_cie() {
+  for(int i = 0; i <= 256; i++) {
+    float t = float(i) / 256.0;
+    t = 4.0 * t - 2.0;
+
+    if(t < 0) {
+      tabprint16(0, i);
+    } else if (t > 1) {
+      tabprint16(65535, i);
+    } else {
+      double l = floor(lum_to_cie(t) * 65535.0 + 0.5);
+      tabprint16(l, i);
+    }
   }
 }
 
 
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char** argv)
 {
-  cubelerp();
-  return 0;
+  s1p14_to_cie();
+  printf("\n");
 
-  for(int i = 0; i < 256; i++) {
-    for(int j = 0; j < 256; j++) {
-      uint16_t a = 0;
-      
-      a = (i + j) << 8;
-      a -= ((uint16_t)(i * j));
-
-      uint32_t b = 0;
-
-      b += (i << 8);
-      b += (j << 8);
-      b -= (uint16_t)(i * j);
-
-      assert(a == b);
-      //printf("%02x ", a);
-
-    }
-    //printf("\n");
-  }
-  return 0;
-
-  for(int i = 0; i <= 255; i++) {
-    if(i % 16 == 0) printf("\n");
-    uint8_t a = square0(i);
-    uint8_t b = square1(i);
-    uint8_t c = square2(i);
-    uint8_t d = square3(i);
-    uint8_t e = ciesin(i);
-    //printf("%3d, %3d, %3d, %3d\n", a, b, c, d);
-    printf("%3d, ", e);
-  }
 	return 0;
 }
 

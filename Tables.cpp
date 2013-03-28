@@ -3,7 +3,7 @@
 //-----------------------------------------------------------------------------
 // Exponential ramp.
 
-uint8_t extern const __attribute__((aligned(256))) PROGMEM exptab[256]  =
+uint8_t extern const PROGMEM exptab[256]  =
 {
   0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
   2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,5,5,
@@ -19,7 +19,7 @@ uint8_t extern const __attribute__((aligned(256))) PROGMEM exptab[256]  =
 
 // Numeric brightness -> perceived brightness
 
-extern const uint8_t __attribute__((aligned(256))) gammatab[256] PROGMEM =
+extern const uint8_t gammatab[256] PROGMEM =
 {
   0,15,22,27,31,35,39,42,45,47,50,52,55,57,59,61,63,65,67,69,71,73,74,76,78,79,
   81,82,84,85,87,88,90,91,93,94,95,97,98,99,100,102,103,104,105,107,108,109,110,
@@ -40,7 +40,7 @@ extern const uint8_t __attribute__((aligned(256))) gammatab[256] PROGMEM =
 //-----------------------------------------------------------------------------
 // CIE 1931 luminosity
 
-extern const uint8_t __attribute__((aligned(256))) cielum[] PROGMEM =
+extern const uint8_t cielum[257] PROGMEM =
 {
   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   1,   1,   1,   1,   1,   1,
   1,   1,   1,   2,   2,   2,   2,   2,   2,   2,   2,   3,   3,   3,   3,   3,
@@ -58,9 +58,10 @@ extern const uint8_t __attribute__((aligned(256))) cielum[] PROGMEM =
   151, 153, 155, 157, 159, 161, 162, 164, 166, 168, 170, 172, 174, 176, 178, 180,
   182, 185, 187, 189, 191, 193, 195, 197, 200, 202, 204, 206, 208, 211, 213, 215,
   218, 220, 222, 225, 227, 230, 232, 234, 237, 239, 242, 244, 247, 249, 252, 255,
+  255
 };
 
-extern const uint8_t __attribute__((aligned(256))) ciesin[256] PROGMEM =
+extern const uint8_t ciesin[256] PROGMEM =
 {	
 	0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 	1,   1,   1,   1,   1,   1,   2,   2,   2,   2,   2,   3,   3,   3,   3,   4,
@@ -80,7 +81,7 @@ extern const uint8_t __attribute__((aligned(256))) ciesin[256] PROGMEM =
 	1,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) sintab[256] PROGMEM =
+extern const uint8_t sintab[256] PROGMEM =
 {	
 128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173,
 176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211, 213, 215,
@@ -98,7 +99,7 @@ extern const uint8_t __attribute__((aligned(256))) sintab[256] PROGMEM =
 65, 67, 70, 73, 76, 79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124
 };
 
-extern const uint8_t __attribute__((aligned(256))) quadtab[256] PROGMEM =
+extern const uint8_t quadtab[256] PROGMEM =
 {
 255, 251, 247, 243, 239, 235, 232, 228, 224, 220, 217, 213, 209, 206, 202, 199, 195, 192, 
 188, 185, 181, 178, 175, 171, 168, 165, 162, 158, 155, 152, 149, 146, 143, 140, 137, 134, 
@@ -115,7 +116,7 @@ extern const uint8_t __attribute__((aligned(256))) quadtab[256] PROGMEM =
 };
 
 // Gamma-corrected sine wave
-extern const uint8_t __attribute__((aligned(256))) gammasin[] PROGMEM =
+extern const uint8_t gammasin[] PROGMEM =
 {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	1,1,1,1,1,2,2,2,2,3,3,4,4,5,5,6,7,8,9,9,10,
@@ -131,7 +132,7 @@ extern const uint8_t __attribute__((aligned(256))) gammasin[] PROGMEM =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) gammapulse[256] PROGMEM =
+extern const uint8_t gammapulse[256] PROGMEM =
 {
 	//0,0,0,0,0,0,0,0,0,0,0,1,1,2,3,4,
 	//5,6,8,10,12,15,17,20,24,28,32,36,41,46,51,57,
@@ -155,7 +156,7 @@ extern const uint8_t __attribute__((aligned(256))) gammapulse[256] PROGMEM =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) sparkles[256] PROGMEM =
+extern const uint8_t sparkles[256] PROGMEM =
 {
 	// Exponential spike, scale factor 1.25, 25 elements
 	16, 20, 25, 31, 39, 48, 61, 76, 95, 119, 149, 186, 232, 186, 149, 119, 95, 76, 61, 48, 39, 31, 25, 20, 16,
@@ -172,7 +173,7 @@ extern const uint8_t __attribute__((aligned(256))) sparkles[256] PROGMEM =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pixel16[256] PROGMEM =
+extern const uint8_t pixel16[256] PROGMEM =
 {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -195,7 +196,7 @@ extern const uint8_t __attribute__((aligned(256))) pixel16[256] PROGMEM =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_5_2[256] PROGMEM =
+extern const uint8_t pulse_5_2[256] PROGMEM =
 {
 0,189,220,236,245,250,253,255,255,255,254,252,251,249,246,244,
 241,239,236,233,230,228,225,222,219,216,213,210,207,204,202,199,
@@ -215,7 +216,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_5_2[256] PROGMEM =
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_5_1[256] PROGMEM =
+extern const uint8_t pulse_5_1[256] PROGMEM =
 {
 0,219,237,245,250,252,254,255,255,255,254,254,253,252,251,249,
 248,247,245,244,242,241,239,238,236,235,233,232,230,228,227,225,
@@ -235,7 +236,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_5_1[256] PROGMEM =
 10,10,9,8,8,7,6,6,5,4,4,3,3,2,1,1,	
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_5_3[256] PROGMEM = 
+extern const uint8_t pulse_5_3[256] PROGMEM = 
 {
 0,163,204,226,240,247,252,254,255,254,253,251,248,245,242,238,
 235,231,227,223,219,215,211,207,203,199,195,191,187,183,179,176,
@@ -255,7 +256,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_5_3[256] PROGMEM =
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,	
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_5_4[256] PROGMEM =
+extern const uint8_t pulse_5_4[256] PROGMEM =
 {
 	0,140,190,218,235,245,251,254,255,254,252,250,246,242,238,233,
 	228,223,218,213,208,203,198,193,188,183,178,173,169,164,159,155,
@@ -275,7 +276,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_5_4[256] PROGMEM =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_5_6[256] PROGMEM =
+extern const uint8_t pulse_5_6[256] PROGMEM =
 {
 	0,104,163,201,225,240,249,254,255,254,251,247,242,236,230,223,
 	216,209,202,195,188,181,174,168,161,155,149,143,137,131,126,121,
@@ -295,7 +296,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_5_6[256] PROGMEM =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_2_2[256] PROGMEM =
+extern const uint8_t pulse_2_2[256] PROGMEM =
 {
 	0,10,19,28,37,46,55,63,71,79,86,94,101,108,115,121,
 	127,134,140,145,151,156,162,167,172,176,181,185,189,193,197,201,
@@ -315,7 +316,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_2_2[256] PROGMEM =
 	3,2,2,2,1,1,1,1,1,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_2_3[256] PROGMEM =
+extern const uint8_t pulse_2_3[256] PROGMEM =
 {
 	0,2,5,9,14,20,25,31,37,44,50,57,63,70,77,83,
 	90,97,103,110,116,123,129,135,141,147,152,158,163,169,174,179,
@@ -335,7 +336,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_2_3[256] PROGMEM =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_2_4[256] PROGMEM =
+extern const uint8_t pulse_2_4[256] PROGMEM =
 {
 	0,0,1,3,5,8,12,15,20,24,29,34,40,46,51,58,
 	64,70,76,83,89,96,102,109,115,122,128,135,141,147,153,159,
@@ -355,7 +356,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_2_4[256] PROGMEM =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-extern const uint8_t __attribute__((aligned(256))) pulse_2_6[256] PROGMEM =
+extern const uint8_t pulse_2_6[256] PROGMEM =
 {
 	0,0,0,0,1,2,2,4,5,7,10,13,16,19,23,27,
 	32,37,42,47,53,59,65,71,78,84,91,98,105,111,118,125,
@@ -376,7 +377,7 @@ extern const uint8_t __attribute__((aligned(256))) pulse_2_6[256] PROGMEM =
 };
 
 
-extern const uint8_t __attribute__((aligned(256))) gamma_2_2[256] PROGMEM =
+extern const uint8_t gamma_2_2[256] PROGMEM =
 {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,
@@ -398,7 +399,7 @@ extern const uint8_t __attribute__((aligned(256))) gamma_2_2[256] PROGMEM =
 
 // White noise
 
-extern const uint8_t __attribute__((aligned(256))) PROGMEM noise[256] =
+extern const uint8_t PROGMEM noise[256] =
 {
   159,103,68,166,7,138,160,220,114,59,239,145,195,8,36,73,
   132,168,71,149,170,150,70,133,153,218,20,2,98,231,24,110,
@@ -417,3 +418,22 @@ extern const uint8_t __attribute__((aligned(256))) PROGMEM noise[256] =
   195,222,9,6,167,30,85,44,161,250,109,37,29,219,124,87,
   167,80,151,156,194,4,162,92,44,169,95,213,246,216,127,38
 };
+
+extern const uint8_t PROGMEM huetab[256] = {
+  0,   5,  11,  17,  23,  29,  35,  41,  47,  53,  59,  65,  71,  77,  83,  89,
+ 95, 101, 107, 113, 119, 125, 131, 137, 143, 149, 155, 161, 167, 173, 179, 185,
+191, 197, 203, 209, 215, 221, 227, 233, 239, 245, 251, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 249, 243, 237, 231, 225, 219, 213, 207, 201, 195, 189, 183, 177, 171, 165,
+159, 153, 147, 141, 135, 129, 123, 117, 111, 105,  99,  93,  87,  81,  75,  69,
+ 63,  57,  51,  45,  39,  33,  27,  21,  15,   9,   3,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+};  

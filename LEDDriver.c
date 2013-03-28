@@ -12,7 +12,7 @@
 struct Pixel pixels[8];
 
 // PWM cycle tick, 4.096 kilohertz.
-uint32_t blip_tick;
+uint32_t volatile blip_tick;
 
 // Output brightness, treble channel
 uint8_t bright1 = 0;
@@ -125,7 +125,8 @@ __attribute__((naked)) void bits_red_6() {
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-		asm("nop"); asm("nop"); asm("nop");
+		asm("nop"); asm("nop");
+    asm("nop");
 	}		
 
 	// switch to new sink
@@ -996,7 +997,7 @@ __attribute__((naked)) void bits_blue_7() {
 	// set blanking flag (3 cycles)
 	asm("ldi r30, 1");
 	asm("sts blank, r30");
-	
+  
 	// set ADC start conversion flag
 	asm("lds r30, %0" : : "X" (ADCSRA) );
 	asm("ori r30, %0" : : "X" (bit(ADSC)) );
@@ -1286,7 +1287,8 @@ void SetupLEDs() {
 	PRR &= ~bit(PRADC);
 	ADMUX  = MIC_PIN | bit(ADLAR);
 	ADCSRA = bit(ADEN) | bit(ADPS2) | bit(ADPS0);
-	//DIDR0 = 0x3F & ~(1 << BUTTON1_PIN);
+	DIDR0 = 0x3F & ~((1 << BUTTON1_PIN) | (1 << BUTTON2_PIN));
+  DIDR1 = 0xFF;
 
 	// Set timer 1 to tick at full speed and generate overflow interrupts.
 	PRR &= ~bit(PRTIM1);

@@ -26,7 +26,7 @@ void blip_swap();
 void blip_swap64();
 void clear();
 
-extern uint32_t blip_tick; // 4.096 khz
+extern volatile uint32_t blip_tick; // 4.096 khz
 
 // Button debounce counters
 extern volatile uint8_t buttonstate1;
