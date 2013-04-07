@@ -1235,7 +1235,7 @@ void blip_swap64() {
   blip_swap();
 }  
 
-__attribute__((naked)) void clear() {
+__attribute__((naked)) void blip_clear() {
 	asm("sts pixels +  0, r1"); asm("sts pixels +  1, r1"); asm("sts pixels +  2, r1");
 	asm("sts pixels +  3, r1"); asm("sts pixels +  4, r1"); asm("sts pixels +  5, r1");
 	asm("sts pixels +  6, r1"); asm("sts pixels +  7, r1"); asm("sts pixels +  8, r1");

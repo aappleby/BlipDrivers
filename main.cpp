@@ -25,21 +25,21 @@ typedef void (*pattern_callback)();
 int pattern_index = 0;
 
 pattern_callback patterns[] = {
+  hsv_test,
 	SlowColorCycle,
+	AudioMeter,
 	PulsingRainbows,
-  Confetti,
 	CheshireSmile,
+	Bliplace1,
+  Confetti,
 	DancingSapphire,
 	SunAndStars,
 	RomanCandle,
 	Fireworks,
-	Bliplace1,
 	Blackbody,
-	AudioMeter,
   
   /*
 	pov_test,
-  hsv_test,
 	red_test,
 	green_test,
 	blue_test,
@@ -60,7 +60,7 @@ int main(void)
       debounce_down1 = 0;
     }
 		
-		clear();
+		blip_clear();
     patterns[pattern_index]();
 		blip_swap();
 	}

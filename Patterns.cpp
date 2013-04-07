@@ -19,7 +19,7 @@ __attribute__((noinline)) uint8_t rng()
 
 // Tests button functionality.
 void button_test() {
-	clear();
+	blip_clear();
 	for(int i = 0; i < 4; i++) {
 		if(buttonstate1) pixels[i].g = 0xFF;
 		else pixels[i].r = 0xFF;
@@ -65,22 +65,22 @@ void blue_test() {
 
 // Scrolling rainbow, tests table interpolation.
 void hsv_test() {
-	uint16_t phase = blip_tick * 8;
-	uint16_t step = 32 * 256;
+	uint16_t phase = blip_tick * 5;
+	uint16_t step = 5000;
 
   uint16_t s, b;
 
 	for(int i = 0; i < 8; i++) {
-    s = tablelerp_asm3(huetab, phase);
-    b = tablelerp_asm3_nowrap(cielum, s);
+    s = lerp_u8_u16(huetab, phase);
+    b = lerp_u8_u16_nowrap(cielum, s);
 		pixels[i].r = b >> 8;
     
-    s = tablelerp_asm3(huetab, phase + 85 * 256);
-    b = tablelerp_asm3_nowrap(cielum, s);
+    s = lerp_u8_u16(huetab, phase + 85 * 256);
+    b = lerp_u8_u16_nowrap(cielum, s);
 		pixels[i].g = b >> 8;
 
-    s = tablelerp_asm3(huetab, phase + uint16_t(170) * uint16_t(256));
-    b = tablelerp_asm3_nowrap(cielum, s);
+    s = lerp_u8_u16(huetab, phase + uint16_t(170) * uint16_t(256));
+    b = lerp_u8_u16_nowrap(cielum, s);
 		pixels[i].b = b >> 8;
     
     phase += step;
@@ -91,7 +91,7 @@ void hsv_test() {
 // the audio intensity. The left 4 LEDs show the bass intensity, the right 4
 // show the treble intensity.
 void AudioMeter() {
-	clear();
+	blip_clear();
   // Divide the 16-bit intensity values down into the (0,1023) range.
 	uint16_t treb = ibright1 / 64;
 	uint16_t bass = ibright2 / 64;
@@ -129,16 +129,22 @@ void AudioMeter() {
 
 // Backwards-compatibility mode. :)
 void Bliplace1() {
-	pixels[0].r = pixels[0].g = pixels[0].b = bright1 >> 2;
-	pixels[1].r = pixels[1].g = pixels[1].b = bright1 >> 2;
+  uint8_t b1 = ibright1 >> 8;
+  uint8_t b2 = ibright2 >> 8;
   
-	pixels[2].r = pixels[2].g = pixels[2].b = bright2 >> 2;
-	pixels[3].r = pixels[3].g = pixels[3].b = bright2 >> 2;
-	pixels[4].r = pixels[4].g = pixels[4].b = bright2 >> 2;
-	pixels[5].r = pixels[5].g = pixels[5].b = bright2 >> 2;
+  b1 = pgm_read_byte(cielum + b1);
+  b2 = pgm_read_byte(cielum + b2);
   
-	pixels[6].r = pixels[6].g = pixels[6].b = bright1 >> 2;
-	pixels[7].r = pixels[7].g = pixels[7].b = bright1 >> 2;
+	pixels[0].r = pixels[0].g = pixels[0].b = b1;
+	pixels[1].r = pixels[1].g = pixels[1].b = b1;
+  
+	pixels[2].r = pixels[2].g = pixels[2].b = b2;
+	pixels[3].r = pixels[3].g = pixels[3].b = b2;
+	pixels[4].r = pixels[4].g = pixels[4].b = bright2 >> 0;
+	pixels[5].r = pixels[5].g = pixels[5].b = bright2 >> 0;
+  
+	pixels[6].r = pixels[6].g = pixels[6].b = bright1 >> 0;
+	pixels[7].r = pixels[7].g = pixels[7].b = bright1 >> 0;
 }	
 
 // All LEDs pulse in colors that approximate blackbody radiation,
@@ -423,11 +429,11 @@ void CheshireSmile() {
 		uint8_t r2 = (corners[i].r * bright1) >> 8;
 		uint8_t g2 = (corners[i].g * bright1) >> 8;
 		uint8_t b2 = (corners[i].b * bright1) >> 8;
-		
+
 		pixels[i].r = (r1 + r2);
 		pixels[i].g = (g1 + g2);
 		pixels[i].b = (b1 + b2 + 8);
-	}		
+	}
 }	
 
 // Glittery rainbow noise.
@@ -438,9 +444,9 @@ void Confetti() {
   uint16_t phase_b = (blip_tick * 2) >> 2;
   
   for(int i = 0; i < 8; i++) {
-    uint8_t r = tablelerp8_asm(noise, phase_r);
-    uint8_t g = tablelerp8_asm(noise, phase_g);
-    uint8_t b = tablelerp8_asm(noise, phase_b);
+    uint8_t r = lerp_u8_u8(noise, phase_r);
+    uint8_t g = lerp_u8_u8(noise, phase_g);
+    uint8_t b = lerp_u8_u8(noise, phase_b);
     
     r = (r * r) >> 8;
     g = (g * g) >> 8;

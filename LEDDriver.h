@@ -11,6 +11,8 @@ extern "C" {
 
 void SetupLEDs();
 
+// Our "framebuffer" is a simple array of 8 RGB pixels.
+
 struct Pixel {
 	uint8_t r;
 	uint8_t g;
@@ -19,14 +21,17 @@ struct Pixel {
 
 extern struct Pixel pixels[8];
 
+// Clear the framebuffer to black.
+void blip_clear();
+
 // Swap immediately.
 void blip_swap();
 
 // Swap w/ a fixed refresh rate of 64 hz.
 void blip_swap64();
-void clear();
 
-extern volatile uint32_t blip_tick; // 4.096 khz
+// Our global 'clock' ticks 4096 times a second.
+extern volatile uint32_t blip_tick;
 
 // Button debounce counters
 extern volatile uint8_t buttonstate1;
@@ -36,7 +41,6 @@ extern volatile uint16_t debounce_down1;
 extern volatile uint8_t buttonstate2;
 extern volatile uint16_t debounce_up2;
 extern volatile uint16_t debounce_down2;
-
 
 
 extern uint8_t bright1;
