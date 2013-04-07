@@ -29,7 +29,7 @@
       <ToolNumber>0000B0040689</ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>1891</port>
+        <port>1212</port>
         <ssl>False</ssl>
       </Channel>
       <ToolOptions>
@@ -54,7 +54,7 @@
       </ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>1059</port>
+        <port>1212</port>
         <ssl>False</ssl>
       </Channel>
     </com_atmel_avrdbg_tool_simulator>

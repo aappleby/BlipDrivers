@@ -15,10 +15,23 @@ extern "C"
   void UpdateButtons();
 };
 
-const uint8_t sources[] PROGMEM =
+uint8_t extern const PROGMEM sources[]  =
 {
-  SOURCE_1, SOURCE_2, SOURCE_3, SOURCE_4,	SOURCE_5, SOURCE_6, SOURCE_7,
-  SOURCE_8, SOURCE_7, SOURCE_6, SOURCE_5, SOURCE_4, SOURCE_3, SOURCE_2,
+  1 << PIXEL_0_TO_PIN,
+  1 << PIXEL_1_TO_PIN,
+  1 << PIXEL_2_TO_PIN,
+  1 << PIXEL_3_TO_PIN,
+  1 << PIXEL_4_TO_PIN,
+  1 << PIXEL_5_TO_PIN,
+  1 << PIXEL_6_TO_PIN,
+  1 << PIXEL_7_TO_PIN,
+  1 << PIXEL_6_TO_PIN,
+  1 << PIXEL_5_TO_PIN,
+  1 << PIXEL_4_TO_PIN,
+  1 << PIXEL_3_TO_PIN,
+  1 << PIXEL_2_TO_PIN,
+  1 << PIXEL_1_TO_PIN,
+  1 << PIXEL_0_TO_PIN,
 };
 
 extern const uint8_t gammasin[] PROGMEM;

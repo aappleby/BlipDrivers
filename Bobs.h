@@ -11,7 +11,7 @@ public:
 
 	void render();
 
-    uint16_t speed;
+  uint16_t speed;
 	uint16_t phase;
 	uint32_t timestamp;
 };

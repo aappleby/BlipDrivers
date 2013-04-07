@@ -129,16 +129,16 @@ void AudioMeter() {
 
 // Backwards-compatibility mode. :)
 void Bliplace1() {
-	pixels[0].r = pixels[0].g = pixels[0].b = bright1;
-	pixels[1].r = pixels[1].g = pixels[1].b = bright1;
+	pixels[0].r = pixels[0].g = pixels[0].b = bright1 >> 2;
+	pixels[1].r = pixels[1].g = pixels[1].b = bright1 >> 2;
   
-	pixels[2].r = pixels[2].g = pixels[2].b = bright2;
-	pixels[3].r = pixels[3].g = pixels[3].b = bright2;
-	pixels[4].r = pixels[4].g = pixels[4].b = bright2;
-	pixels[5].r = pixels[5].g = pixels[5].b = bright2;
+	pixels[2].r = pixels[2].g = pixels[2].b = bright2 >> 2;
+	pixels[3].r = pixels[3].g = pixels[3].b = bright2 >> 2;
+	pixels[4].r = pixels[4].g = pixels[4].b = bright2 >> 2;
+	pixels[5].r = pixels[5].g = pixels[5].b = bright2 >> 2;
   
-	pixels[6].r = pixels[6].g = pixels[6].b = bright1;
-	pixels[7].r = pixels[7].g = pixels[7].b = bright1;
+	pixels[6].r = pixels[6].g = pixels[6].b = bright1 >> 2;
+	pixels[7].r = pixels[7].g = pixels[7].b = bright1 >> 2;
 }	
 
 // All LEDs pulse in colors that approximate blackbody radiation,

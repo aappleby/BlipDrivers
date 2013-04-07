@@ -1,6 +1,8 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#include <stdint.h>
+
 #ifndef F_CPU
 #define F_CPU 8000000
 #endif
@@ -144,6 +146,14 @@
 #define SOURCE_6 0x40
 #define SOURCE_7 0x20
 #define SOURCE_8 0x80
+
+enum {
+  PIXEL_0_TO_PIN = 1, PIXEL_1_TO_PIN = 2, PIXEL_2_TO_PIN = 0, PIXEL_3_TO_PIN = 3,
+  PIXEL_4_TO_PIN = 4, PIXEL_5_TO_PIN = 6, PIXEL_6_TO_PIN = 5, PIXEL_7_TO_PIN = 7,
+  
+  PIN_0_TO_PIXEL = 2, PIN_1_TO_PIXEL = 0, PIN_2_TO_PIXEL = 1, PIN_3_TO_PIXEL = 3,
+  PIN_4_TO_PIXEL = 4, PIN_5_TO_PIXEL = 6, PIN_6_TO_PIXEL = 5, PIN_7_TO_PIXEL = 7,
+};  
 
 #define SINK_RED 0x6E
 #define SINK_GREEN 0xF1

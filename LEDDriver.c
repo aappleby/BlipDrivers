@@ -4,6 +4,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h> 
 #include <avr/sleep.h>
+#include <util/delay.h>
 
 //-----------------------------------------------------------------------------
 // Externally-visible data.
@@ -77,9 +78,10 @@ uint8_t tickcount = 0;
 void (*timer_callback)() ;
 
 //------------------------------------------------------------------------------
-// Timer callback interrupt, dispatches our LED update callback. Note that we
-// _ijmp_ to the callback, and _reti_ from the callback - this saves a few
-// cycles per interrupt.
+// Timer interrupt, dispatches our LED update callback. Note that we _ijmp_ to
+// the callback, and _reti_ from the callback - this saves a few cycles per
+// interrupt, which ends up being a big win when we're doing 24000 of them per
+// second.
 
 ISR(TIMER1_OVF_vect, ISR_NAKED)
 {
@@ -100,22 +102,48 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 //------------------------------------------------------------------------------
 // Interrupt handlers
 
-#define TIMEOUT_6R (65536 - 127)
-#define TIMEOUT_6G (65536 - 127)
-#define TIMEOUT_6B (65536 - 127)
+// Each callback needs to fire a precise number of cycles after the previous
+// callback finished. These constants represent the amount of delay needed
+// between adjacent callbacks so that everything stays in sync. Since our timer
+// is counting up to 65536, we represent a delay of N as 65536 - N.
 
-#define TIMEOUT_7R (65536 - 300)
-#define TIMEOUT_7G (65536 - 300)
-#define TIMEOUT_7B (65536 - 300)
+#define RED_FIELD_A_TIMEOUT   (65536 - 127)
+#define RED_FIELD_B_TIMEOUT   (65536 - 300)
 
-__attribute__((naked)) void bits_red_6() {
+#define GREEN_FIELD_A_TIMEOUT (65536 - 127)
+#define GREEN_FIELD_B_TIMEOUT (65536 - 300)
+
+#define BLUE_FIELD_A_TIMEOUT  (65536 - 127)
+#define BLUE_FIELD_B_TIMEOUT  (65536 - 300)
+
+// Our PWM period is divided into 3 fields for red/green/blue, each of which is
+// in turn divided into 2 callbacks for the 'low' bits 0-6 and the 'high' bit 7.
+// We interleave our audio processing code between the LED pulses for bits 0-5,
+// and we release the CPU back to the user after sending pulses for bits 6 and 7.
+
+// Each field is 3+5+10+20+40+80+160+320 = 638 cycles long, and we have 3 of them
+// per period - that's 1914 cycles.
+// Our CPU runs at 8 mhz, and we want a refresh rate of 4096 hz - that's 1953
+// cycles. We lose a few cycles in overhead between fields, but we still end up
+// with ~20 cycles of dead space each period. We could probably do something more
+// useful there.
+
+// Note: absolutely everything in these callbacks _must_ run in _exactly_ the same
+// number of cycles - all possible paths through branching code must be timed and
+// padded with NOPs to keep the branch lengths equal.
+
+// Sends pulses for red field bits 0 - 6 to the LEDs, interleaving those pulses
+// with our audio processing code. Since this is the first callback fired for
+// a PWM period, we also do a small amount of additional bookkeeping.
+
+__attribute__((naked)) void red_field_A() {
 	// end previous pulse
 	{
 		asm("clr r30");
 		asm("out %0, r30" : : "I" (_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 
-	// Dead space between PWM cycles. Time spent here should cause
+	// 20 cycle dead space between PWM cycles. Time spent here should cause
 	// the overall PWM rate to be 4.096 khz, or ~1953 cycles.
 	
 	{
@@ -288,6 +316,8 @@ __attribute__((naked)) void bits_red_6() {
 		asm("lds r30, tickcount");
 		asm("tst r30");
 		asm("breq trig1_adapt");
+    
+    // Cycle padding if we're not doing adaptation this period.
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
@@ -339,14 +369,14 @@ __attribute__((naked)) void bits_red_6() {
 	asm("pop r25");
 	
 	// set next callback, 6 cycles
-	asm("ldi r30, pm_lo8(bits_red_7)");
-	asm("ldi r31, pm_hi8(bits_red_7)");
+	asm("ldi r30, pm_lo8(red_field_B)");
+	asm("ldi r31, pm_hi8(red_field_B)");
 	asm("sts timer_callback, r30");
 	asm("sts timer_callback+1, r31");
 	
 	// set next timeout, 6 cycles
-	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6R)) );
-	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6R)) );
+	asm("ldi r30, %0" : : "M" (lo8(RED_FIELD_A_TIMEOUT)) );
+	asm("ldi r31, %0" : : "M" (hi8(RED_FIELD_A_TIMEOUT)) );
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 
@@ -366,18 +396,19 @@ __attribute__((naked)) void bits_red_6() {
 	asm("reti");
 }
 
-//----------
+//------------------------------------------------------------------------------
+// Sends red field bit 7 pulse and queues callback for green field.
 
-__attribute__((naked)) void bits_red_7() {
+__attribute__((naked)) void red_field_B() {
 	// set next callback
-	asm("ldi r30, pm_lo8(bits_green_6)");
-	asm("ldi r31, pm_hi8(bits_green_6)");
+	asm("ldi r30, pm_lo8(green_field_A)");
+	asm("ldi r31, pm_hi8(green_field_A)");
 	asm("sts timer_callback, r30");
 	asm("sts timer_callback+1, r31");
 
 	// set next timeout
-	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7R)) );
-	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7R)) );
+	asm("ldi r30, %0" : : "M" (lo8(RED_FIELD_B_TIMEOUT)) );
+	asm("ldi r31, %0" : : "M" (hi8(RED_FIELD_B_TIMEOUT)) );
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 
@@ -398,8 +429,9 @@ __attribute__((naked)) void bits_red_7() {
 }
 
 //------------------------------------------------------------------------------
+// Green field A. Pulses and audio.
 
-__attribute__((naked)) void bits_green_6() {
+__attribute__((naked)) void green_field_A() {
 	// end previous pulse
 	{
 		asm("clr r30");
@@ -617,14 +649,14 @@ __attribute__((naked)) void bits_green_6() {
 	asm("nop"); asm("nop");
 	
 	// set next callback
-	asm("ldi r30, pm_lo8(bits_green_7)");
-	asm("ldi r31, pm_hi8(bits_green_7)");
+	asm("ldi r30, pm_lo8(green_field_B)");
+	asm("ldi r31, pm_hi8(green_field_B)");
 	asm("sts timer_callback, r30");
 	asm("sts timer_callback+1, r31");
 	
 	// set next timeout
-	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6G)) );
-	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6G)) );
+	asm("ldi r30, %0" : : "M" (lo8(GREEN_FIELD_A_TIMEOUT)) );
+	asm("ldi r31, %0" : : "M" (hi8(GREEN_FIELD_A_TIMEOUT)) );
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
@@ -649,16 +681,19 @@ __attribute__((naked)) void bits_green_6() {
 	asm("reti");
 }
 
-__attribute__((naked)) void bits_green_7() {
+//------------------------------------------------------------------------------
+// Green field B. LED pulse for green bit 7, that's it.
+
+__attribute__((naked)) void green_field_B() {
 	// set next callback
-	asm("ldi r30, pm_lo8(bits_blue_6)");
-	asm("ldi r31, pm_hi8(bits_blue_6)");
+	asm("ldi r30, pm_lo8(blue_field_A)");
+	asm("ldi r31, pm_hi8(blue_field_A)");
 	asm("sts timer_callback, r30");
 	asm("sts timer_callback+1, r31");
 
 	// set next timeout
-	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7G)) );
-	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7G)) );
+	asm("ldi r30, %0" : : "M" (lo8(GREEN_FIELD_B_TIMEOUT)) );
+	asm("ldi r31, %0" : : "M" (hi8(GREEN_FIELD_B_TIMEOUT)) );
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
@@ -679,8 +714,10 @@ __attribute__((naked)) void bits_green_7() {
 }
 
 //------------------------------------------------------------------------------
+// Blue field A. More LED pulses as above, the last of the audio processing, and
+// button updating go here.
 
-__attribute__((naked)) void bits_blue_6() {
+__attribute__((naked)) void blue_field_A() {
 	// end previous pulse
 	{
 		asm("clr r30");
@@ -940,14 +977,14 @@ __attribute__((naked)) void bits_blue_6() {
 	// (and after we've updated the button...)
 
 	// set next callback
-	asm("ldi r30, pm_lo8(bits_blue_7)");
-	asm("ldi r31, pm_hi8(bits_blue_7)");
+	asm("ldi r30, pm_lo8(blue_field_B)");
+	asm("ldi r31, pm_hi8(blue_field_B)");
 	asm("sts timer_callback, r30");
 	asm("sts timer_callback+1, r31");
 	
 	// set next timeout
-	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_6B)) );
-	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_6B)) );
+	asm("ldi r30, %0" : : "M" (lo8(BLUE_FIELD_A_TIMEOUT)) );
+	asm("ldi r31, %0" : : "M" (hi8(BLUE_FIELD_A_TIMEOUT)) );
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
@@ -961,7 +998,7 @@ __attribute__((naked)) void bits_blue_6() {
 	// Safe to call this from here as it uses r25, r30, r31
 	asm("call UpdateButtons");
 
-	// restore r25 out here because the 10 uS block is completely packed.
+	// restore r25 out here because the 80 cycle block is completely packed.
 	asm("pop r25");
 
 	// Restore status register, R31, and R30.
@@ -974,17 +1011,23 @@ __attribute__((naked)) void bits_blue_6() {
 	asm("reti");
 }	
 
-__attribute__((naked)) void bits_blue_7() {
+//------------------------------------------------------------------------------
+// Blue field B. Note that this callback is also responsible for triggering the
+// next ADC sample conversion, so that it will happen during the relatively
+// 'quiet' period between PWM periods. We also set the 'vblank' flag here so
+// that clients that care about synchronizing with the PWM frequency can do so.
+
+__attribute__((naked)) void blue_field_B() {
 	// set next callback
-	asm("ldi r30, pm_lo8(bits_red_6)");
-	asm("ldi r31, pm_hi8(bits_red_6)");
+	asm("ldi r30, pm_lo8(red_field_A)");
+	asm("ldi r31, pm_hi8(red_field_A)");
 	asm("sts timer_callback, r30");
 	asm("sts timer_callback+1, r31");
 
 	// set next timeout
 	// 6 cycles
-	asm("ldi r30, %0" : : "M" (lo8(TIMEOUT_7B)) );
-	asm("ldi r31, %0" : : "M" (hi8(TIMEOUT_7B)) );
+	asm("ldi r30, %0" : : "M" (lo8(BLUE_FIELD_B_TIMEOUT)) );
+	asm("ldi r31, %0" : : "M" (hi8(BLUE_FIELD_B_TIMEOUT)) );
 	asm("sts %0, r31" : : "X" (TCNT1H));
 	asm("sts %0, r30" : : "X" (TCNT1L));
 	
@@ -1151,15 +1194,15 @@ __attribute__((naked)) void swap4c(uint8_t* vin, uint8_t* vout) {
   // The constants on the right here map from logical LED order to physical
   // order. They should probably be moved to config.h
 
-	asm("ldd r18, z+%0*3" : : "X"(2));
-	asm("ldd r19, z+%0*3" : : "X"(0));
-	asm("ldd r20, z+%0*3" : : "X"(1));
-	asm("ldd r21, z+%0*3" : : "X"(3));
+	asm("ldd r18, z+%0*3" : : "X"(PIN_0_TO_PIXEL));
+	asm("ldd r19, z+%0*3" : : "X"(PIN_1_TO_PIXEL));
+	asm("ldd r20, z+%0*3" : : "X"(PIN_2_TO_PIXEL));
+	asm("ldd r21, z+%0*3" : : "X"(PIN_3_TO_PIXEL));
 
-	asm("ldd r22, z+%0*3" : : "X"(4));
-	asm("ldd r23, z+%0*3" : : "X"(6));
-	asm("ldd r24, z+%0*3" : : "X"(5));
-	asm("ldd r25, z+%0*3" : : "X"(7));
+	asm("ldd r22, z+%0*3" : : "X"(PIN_4_TO_PIXEL));
+	asm("ldd r23, z+%0*3" : : "X"(PIN_5_TO_PIXEL));
+	asm("ldd r24, z+%0*3" : : "X"(PIN_6_TO_PIXEL));
+	asm("ldd r25, z+%0*3" : : "X"(PIN_7_TO_PIXEL));
 	
 	asm("ldi r30, 8");
 
@@ -1204,23 +1247,66 @@ __attribute__((naked)) void clear() {
 	asm("ret");
 }
 
+//---------------------------------------------------------------------------
+// Minimalist LED test, just verifies that each LED can be addressed
+// independently.
+
+uint8_t extern const PROGMEM sources[];
+
+void TestLEDs() {
+	// Turn off the serial interface, which the bootloader leaves on by default.
+	UCSR0B &= ~(1 << RXEN0);
+	UCSR0B &= ~(1 << TXEN0);
+	
+	DDRB = 0xFF;
+	PORTB = 0x00;
+	
+	DDRD = 0xFF;
+	PORTD = 0x01;
+	
+	while(1)
+	{
+    PORTB = SINK_RED;
+    for(int i = 0; i < 8; i++) {
+		  PORTD = pgm_read_byte(sources + i);
+      _delay_ms(300);
+    }
+    
+    PORTB = SINK_GREEN;
+    for(int i = 0; i < 8; i++) {
+		  PORTD = pgm_read_byte(sources + i);
+      _delay_ms(300);
+    }
+
+    PORTB = SINK_BLUE;
+    for(int i = 0; i < 8; i++) {
+		  PORTD = pgm_read_byte(sources + i);
+      _delay_ms(300);
+    }
+	}	
+}
+
 //------------------------------------------------------------------------------
-// Initialization
+// Turns off every peripheral in the ATMega.
 
 void ShutStuffDown() {
-	// Disable ports
+	// Set all ports to input mode.
 	
 	DDRB = 0x00;
 	DDRC = 0x00;
 	DDRD = 0x00;
 	
+	// Disable pullups on all ports except for our two button pins so we can come
+  // out of sleep mode
 	PORTB = 0x00;
-	// keep the button pins pulled up so we can come out of sleep mode
 	PORTC = (1 << BUTTON1_PIN) | (1 << BUTTON2_PIN);
 	PORTD = 0x00;
 	
 	// Disable analog comparator
 	ACSR = bit(ACD);
+
+  // TODO(aappleby): er, we should probably be turning off the digital input
+  // buffer for the analog pins here, right?
 	//DIDR1 = 0x03;
 	
 	// Disable all external interrupts.
@@ -1261,28 +1347,34 @@ void ShutStuffDown() {
 	PRR = bit(PRTWI) | bit(PRTIM0) | bit(PRTIM1) | bit(PRTIM2) | bit(PRSPI) | bit(PRUSART0) | bit(PRADC);
 }
 
+//------------------------------------------------------------------------------
+// Initial configuration of all peripherals - we set up the LED array, turn on
+// the microphone, enable pull-ups for our buttons, start the ADC, configure our
+// timer interrupts, and kick off the first ADC sample.
+
 void SetupLEDs() {
+  // No firing interrupts while we're configuring things.
 	cli();
 	
+  // Turn absolutely everything off to start with.
 	ShutStuffDown();
 	
-	// Port B is our sink port.
-	PORTB = 0x00;
-	DDRB = 0xFF;
-
-	// Port C is our status port. (Drive C2 high to power the mic on the greenwired board)
-	DDRC = (1 << MIC_POWER);
-	PORTC = (1 << BUTTON1_PIN) | (1 << BUTTON2_PIN) | (1 << MIC_POWER);
-
-	// Port D is our source port.	
+	// Port D is our LED source port.	
 	PORTD = 0x00;
 	DDRD = 0xFF;
 
-	timer_callback = bits_red_6;
-	
-	// Set up ADC to read from channel 1, left-adjust the result, and sample in
-	// (14 * 32) = 448 cycles (56 uS @ 8 mhz) - the fastest we can sample and
-	// still get 10-bit resolution.
+	// Port B is our LED sink port.
+	PORTB = 0x00;
+	DDRB = 0xFF;
+
+	// Port C is our button input, mic input, and status port. We also power the
+  // microphone from this port so that we can turn it off during sleep mode.
+	DDRC = (1 << MIC_POWER);
+	PORTC = (1 << BUTTON1_PIN) | (1 << BUTTON2_PIN) | (1 << MIC_POWER);
+
+	// Turn the ADC on and set it up to read from the microphone input,
+  // left-adjust the result, and sample in (14 * 32) = 448 cycles (56 uS
+  // at 8 mhz) - the fastest we can sample and still get 10-bit resolution.
 
 	PRR &= ~bit(PRADC);
 	ADMUX  = MIC_PIN | bit(ADLAR);
@@ -1292,15 +1384,19 @@ void SetupLEDs() {
 
 	// Set timer 1 to tick at full speed and generate overflow interrupts.
 	PRR &= ~bit(PRTIM1);
-	TIMSK1 =  (1 << TOIE1);
+	TIMSK1 = (1 << TOIE1);
 	TCCR1A = 0;
 	TCCR1B = (1 << CS10);
-	
+
+  // The first callback that our timer interrupt will fire is for the first
+  // half of the red field.
+	timer_callback = red_field_A;
+		
 	// Device configured, kick off the first ADC conversion and enable
 	// interrupts.
 	sbi(ADCSRA,ADSC);
 
 	sei();
-
 }
 
+//------------------------------------------------------------------------------
