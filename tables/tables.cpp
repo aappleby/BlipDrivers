@@ -6,6 +6,7 @@
 #include <assert.h>
 
 typedef unsigned char uint8_t;
+typedef signed char int8_t;
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
 
@@ -63,6 +64,15 @@ void cubelerp() {
 void tabprint8(uint8_t d, int i) {
   char buf[16];
   sprintf(buf, "%3d", d);
+  printf("%s, ", buf);
+  if(i % 16 == 15) {
+    printf("\n");
+  }
+}
+
+void tabprint_s8(int8_t d, int i) {
+  char buf[16];
+  sprintf(buf, "%4d", d);
   printf("%s, ", buf);
   if(i % 16 == 15) {
     printf("\n");
@@ -159,6 +169,7 @@ double cie_to_lum(double y) {
   }
 }
 
+/*
 void huetab() {
   char buf[256];
   for(int i = 0; i < 256; i++) {
@@ -173,9 +184,10 @@ void huetab() {
     case 4: t = 0; break;
     case 5: t = 0; break;
     };
-    tabprint8(floor(t * 255.0 _ 0.5));
+    tabprint8(floor(t * 255.0 - 0.5));
   }
 }
+*/
 
 void s1p14_to_cie() {
   for(int i = 0; i <= 256; i++) {
@@ -194,9 +206,18 @@ void s1p14_to_cie() {
 }
 
 
+void ssintab() {
+  for(int i = 0; i < 256; i++) {
+    double t = (i / 256.0) * pi * 2.0;
+    double y = sin(t) * 127;
+    tabprint_s8(y, i);
+  }
+}
+
+
 int main(int argc, char** argv)
 {
-  s1p14_to_cie();
+  ssintab();
   printf("\n");
 
 	return 0;

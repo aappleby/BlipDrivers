@@ -154,6 +154,9 @@ uint8_t  lerp_u8_u8  (const uint8_t* table, uint16_t x);
 // Produces a 16-bit result for better precision.
 uint16_t lerp_u8_u16 (const uint8_t* table, uint16_t x);
 
+int16_t lerp_s8_s16(const int8_t* table, uint16_t x);
+int16_t lerp_s8_s16(const int8_t* table, int16_t x);
+
 // Interpolates without wrapping around the end of the table.
 // Requrires a _257_-element table.
 uint8_t lerp_u8_u8_nowrap (const uint8_t* table, uint16_t x);

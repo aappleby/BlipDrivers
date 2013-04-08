@@ -45,17 +45,10 @@ pattern_callback patterns[] = {
   */
 };
 
-SColor blep = { 32768, 16384, 32768 };
-
-volatile int result = 1;
 
 int main(void)
 {
-  int16_t a1 = blip_ssin(0);
-  int16_t a2 = blip_ssin(16384);
-  int16_t a3 = blip_ssin(32768);
-  int16_t a4 = blip_ssin(32768 + 16384);
-  int16_t a5 = blip_ssin(65535);
+  //int16_t x = lerp_s8_s16(ssintab, (16 * 256) + 100);
   
   /*
   for(int i = 0; i < 30000; i++) {
@@ -78,6 +71,7 @@ int main(void)
 	while(1) {
     UpdateSleep();
     
+    /*
     if((buttonstate1 == 1) && (debounce_down1 > 256)) {
       pattern_index = (pattern_index + 1) % pattern_count;
       debounce_down1 = 0;
@@ -89,6 +83,16 @@ int main(void)
     const Color peach = Color::fromHex("F95");
     const Color hotpink = Color::fromHex("f660ab");
     
+    uint16_t phase = blip_tick * 41.3718;
+    
+    for(int i = 0; i < 8; i++) {
+      int16_t b1 = lerp_s8_s16(ssintab, phase);
+      uint16_t b2 = b1 + 32768;
+      pixels[i] = blip_scale(peach, b2);
+    }
+    */
+    
+    /*
     uint16_t phase1 = 49152 + (16 * 256);
     uint16_t phase2 = blip_tick * 55;
     
@@ -101,7 +105,8 @@ int main(void)
       pixels[i] = blip_scale(peach, blip_sin(phase1 + offset));
       
       phase1 += 32 * 256;
-    }      
+    }
+    */     
     
     /*
     const Color pine = Color::fromHex("#466d3d");
@@ -117,7 +122,7 @@ int main(void)
                            blip_scale(grape, blip_audio2));
     */
 
-    //patterns[pattern_index]();
+    patterns[pattern_index]();
 		blip_swap();
 	}
 }

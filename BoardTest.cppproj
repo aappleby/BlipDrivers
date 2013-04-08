@@ -21,16 +21,15 @@
     <OverrideVtorValue>exception_table</OverrideVtorValue>
     <eraseonlaunchrule>0</eraseonlaunchrule>
     <AsfVersion>3.1.3</AsfVersion>
-    <avrtool>com.atmel.avrdbg.tool.simulator</avrtool>
-    <avrtoolinterface>
-    </avrtoolinterface>
+    <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
+    <avrtoolinterface>ISP</avrtoolinterface>
     <com_atmel_avrdbg_tool_ispmk2>
       <ToolType>com.atmel.avrdbg.tool.ispmk2</ToolType>
       <ToolName>AVRISP mkII</ToolName>
       <ToolNumber>0000B0040689</ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>1212</port>
+        <port>13693</port>
         <ssl>False</ssl>
       </Channel>
       <ToolOptions>
@@ -55,7 +54,7 @@
       </ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>10327</port>
+        <port>13693</port>
         <ssl>False</ssl>
       </Channel>
     </com_atmel_avrdbg_tool_simulator>

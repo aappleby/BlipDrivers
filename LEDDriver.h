@@ -10,6 +10,7 @@ extern "C" {
   #endif
 
 void SetupLEDs();
+void TestLEDs();
 
 // Our "framebuffer" is a simple array of 8 RGB pixels.
 
