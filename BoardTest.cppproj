@@ -21,8 +21,9 @@
     <OverrideVtorValue>exception_table</OverrideVtorValue>
     <eraseonlaunchrule>0</eraseonlaunchrule>
     <AsfVersion>3.1.3</AsfVersion>
-    <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
-    <avrtoolinterface>ISP</avrtoolinterface>
+    <avrtool>com.atmel.avrdbg.tool.simulator</avrtool>
+    <avrtoolinterface>
+    </avrtoolinterface>
     <com_atmel_avrdbg_tool_ispmk2>
       <ToolType>com.atmel.avrdbg.tool.ispmk2</ToolType>
       <ToolName>AVRISP mkII</ToolName>
@@ -37,7 +38,7 @@
         <InterfaceProperties>
           <JtagDbgClock>249000</JtagDbgClock>
           <JtagProgClock>1000000</JtagProgClock>
-          <IspClock>125000</IspClock>
+          <IspClock>250000</IspClock>
           <JtagInChain>false</JtagInChain>
           <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
           <JtagDevicesBefore>0</JtagDevicesBefore>
@@ -54,7 +55,7 @@
       </ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>1212</port>
+        <port>10327</port>
         <ssl>False</ssl>
       </Channel>
     </com_atmel_avrdbg_tool_simulator>
@@ -154,12 +155,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Bobs.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Colors.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Colors.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Config.h">

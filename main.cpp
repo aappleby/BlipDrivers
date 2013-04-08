@@ -1,7 +1,6 @@
 #include "Patterns.h"
 #include "LEDDriver.h"
 #include "Bobs.h"
-#include "Colors.h"
 #include "Sleep.h"
 #include "Tables.h"
 #include "Math.h"
@@ -25,18 +24,18 @@ typedef void (*pattern_callback)();
 int pattern_index = 0;
 
 pattern_callback patterns[] = {
-  hsv_test,
-	SlowColorCycle,
-	AudioMeter,
-	PulsingRainbows,
 	CheshireSmile,
-	Bliplace1,
   Confetti,
-	DancingSapphire,
 	SunAndStars,
+	DancingSapphire,
+  hsv_test,
+	Blackbody,
+	AudioMeter,
+	Bliplace1,
+	SlowColorCycle,
+	PulsingRainbows,
 	RomanCandle,
 	Fireworks,
-	Blackbody,
   
   /*
 	pov_test,
@@ -46,8 +45,32 @@ pattern_callback patterns[] = {
   */
 };
 
+SColor blep = { 32768, 16384, 32768 };
+
+volatile int result = 1;
+
 int main(void)
 {
+  int16_t a1 = blip_ssin(0);
+  int16_t a2 = blip_ssin(16384);
+  int16_t a3 = blip_ssin(32768);
+  int16_t a4 = blip_ssin(32768 + 16384);
+  int16_t a5 = blip_ssin(65535);
+  
+  /*
+  for(int i = 0; i < 30000; i++) {
+    uint16_t a = xor128();
+    int16_t b = xor128();
+    
+    int32_t x1 = (int32_t(a) * int32_t(b)) >> 16;
+    int32_t x2 = mul_us16(a, b);
+    
+    if(x1 != x2) {
+      result = 0;
+    }      
+  }
+  */
+  
 	SetupLEDs();
   
   const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
@@ -61,7 +84,40 @@ int main(void)
     }
 		
 		blip_clear();
-    patterns[pattern_index]();
+
+    const Color grape = Color::fromHex("421C52");
+    const Color peach = Color::fromHex("F95");
+    const Color hotpink = Color::fromHex("f660ab");
+    
+    uint16_t phase1 = 49152 + (16 * 256);
+    uint16_t phase2 = blip_tick * 55;
+    
+    for(int i = 0; i < 8; i++) {
+      
+      int16_t offset = blip_ssin(phase2) / 4;
+      
+      offset = mul_su16(offset, blip_audio1);
+      
+      pixels[i] = blip_scale(peach, blip_sin(phase1 + offset));
+      
+      phase1 += 32 * 256;
+    }      
+    
+    /*
+    const Color pine = Color::fromHex("#466d3d");
+    const Color peach = Color::fromHex("#ffca7a");
+    const Color grape = Color::fromHex("5528b2");
+    const Color lemon = Color::fromHex("ffff00");
+
+    pixels[0] = blip_scale(pine, blip_audio1);
+    pixels[1] = blip_scale(peach, blip_audio2);
+    pixels[2] = blip_lerp(grape, lemon, blip_sin(blip_tick * 10));
+    
+    pixels[3] = blip_smadd(blip_scale(pine, blip_audio1),
+                           blip_scale(grape, blip_audio2));
+    */
+
+    //patterns[pattern_index]();
 		blip_swap();
 	}
 }

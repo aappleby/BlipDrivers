@@ -60,10 +60,10 @@ int16_t accumD;
 int16_t accumB;
 
 // Brightness cursor, treble channel.
-uint16_t ibright1;
+uint16_t blip_audio1;
 
 // Brightness cursor, bass channel.
-uint16_t ibright2;
+uint16_t blip_audio2;
 
 // Brightness accumulator, treble channel.
 uint16_t brightaccum1 = 0;
@@ -767,7 +767,7 @@ __attribute__((naked)) void blue_field_A() {
 	
 	// 14 cycles
 	{
-		// uint16_t temp = ibright1;
+		// uint16_t temp = blip_audio1;
 		// if(sample >= tmax1)
 
 		asm("lds r28, sample + 0");
@@ -776,8 +776,8 @@ __attribute__((naked)) void blue_field_A() {
 		asm("lds r31, tmax1 + 1");
 		asm("cp r28, r30");
 		asm("cpc r29, r31");
-		asm("lds r28, ibright1 + 0");
-		asm("lds r29, ibright1 + 1");
+		asm("lds r28, blip_audio1 + 0");
+		asm("lds r29, blip_audio1 + 1");
 	}
 
 	asm("nop"); asm("nop"); asm("nop");
@@ -833,15 +833,15 @@ __attribute__((naked)) void blue_field_A() {
 	
 	// 4 cycles
 	{
-		// ibright1 = temp;
+		// blip_audio1 = temp;
 		asm("store_bright1:");
-		asm("sts ibright1 + 0, r28");
-		asm("sts ibright1 + 1, r29");
+		asm("sts blip_audio1 + 0, r28");
+		asm("sts blip_audio1 + 1, r29");
 	}
 
 	// 9 cycles
 	{
-		// bright1 = pgm_read_byte(exptab+(ibright1 >> 8));
+		// bright1 = pgm_read_byte(exptab+(blip_audio1 >> 8));
 		asm("mov r30, r29");
 		asm("ldi r31, 0x00");
 		asm("subi r30, lo8(-(exptab))");
@@ -880,7 +880,7 @@ __attribute__((naked)) void blue_field_A() {
 	
 	// 14 cycles
 	{
-		// uint16_t temp = ibright2;
+		// uint16_t temp = blip_audio2;
 		// if(bass >= tmax2)
 		asm("lds r28, bass + 0");
 		asm("lds r29, bass + 1");
@@ -888,8 +888,8 @@ __attribute__((naked)) void blue_field_A() {
 		asm("lds r31, tmax2 + 1");
 		asm("cp r28, r30");
 		asm("cpc r29, r31");
-		asm("lds r28, ibright2 + 0");
-		asm("lds r29, ibright2 + 1");
+		asm("lds r28, blip_audio2 + 0");
+		asm("lds r29, blip_audio2 + 1");
 	}
 
 	// 12 cycles. don't split this block.
@@ -937,15 +937,15 @@ __attribute__((naked)) void blue_field_A() {
 
 	// 4 cycles
 	{
-		// ibright2 = temp;
+		// blip_audio2 = temp;
 		asm("store_bright2:");
-		asm("sts ibright2 + 0, r28");
-		asm("sts ibright2 + 1, r29");
+		asm("sts blip_audio2 + 0, r28");
+		asm("sts blip_audio2 + 1, r29");
 	}
 	
 	// 9 cycles
 	{
-		// bright2 = pgm_read_byte(exptab+(ibright2 >> 8));
+		// bright2 = pgm_read_byte(exptab+(blip_audio2 >> 8));
 		asm("mov r30, r29");
 		asm("ldi r31, 0x00");
 		asm("subi r30, lo8(-(exptab))");

@@ -6,18 +6,9 @@
 #include <avr/pgmspace.h>
 #include <math.h>
 
-__attribute__((noinline)) uint8_t rng()
-{
-	static uint32_t y = 12345678;
-	
-	y ^= y << 1;
-	y ^= y >> 5;
-	y ^= y << 16;
-	
-	return y;
-}
-
+//-----------------------------------------------------------------------------
 // Tests button functionality.
+
 void button_test() {
 	blip_clear();
 	for(int i = 0; i < 4; i++) {
@@ -30,71 +21,70 @@ void button_test() {
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Sine waves in the red channel.
-void red_test() {
-	uint8_t phase = blip_tick / 16;
-	const int step = 35;
 
+void red_test() {
+	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
-		uint8_t t = phase + step * i;
-		pixels[i].r = pgm_read_byte(gammasin + t);
+    uint16_t r = blip_sin(phase);
+		pixels[i].r = blip_gamma(r);
+    phase += 8000;
 	}
 }	
 
+//-----------------------------------------------------------------------------
 // Sine waves in the green channel.
+
 void green_test() {
-	uint8_t phase = blip_tick / 16;
-	const int step = 35;
-
+	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
-		uint8_t t = phase + step * i;
-		pixels[i].g = pgm_read_byte(gammasin + t);
+    uint16_t g = blip_sin(phase);
+		pixels[i].g = blip_gamma(g);
+    phase += 8000;
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Sine waves in the blue channel.
-void blue_test() {
-	uint8_t phase = blip_tick / 16;
-	const int step = 35;
 
+void blue_test() {
+	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
-		uint8_t t = phase + step * i;
-		pixels[i].b = pgm_read_byte(gammasin + t);
+    uint16_t b = blip_sin(phase);
+		pixels[i].b = blip_gamma(b);
+    phase += 8000;
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Scrolling rainbow, tests table interpolation.
+
 void hsv_test() {
 	uint16_t phase = blip_tick * 5;
-	uint16_t step = 5000;
-
-  uint16_t s, b;
 
 	for(int i = 0; i < 8; i++) {
-    s = lerp_u8_u16(huetab, phase);
-    b = lerp_u8_u16_nowrap(cielum, s);
-		pixels[i].r = b >> 8;
-    
-    s = lerp_u8_u16(huetab, phase + 85 * 256);
-    b = lerp_u8_u16_nowrap(cielum, s);
-		pixels[i].g = b >> 8;
+    uint16_t r = blip_hsv_r(phase);
+    uint16_t g = blip_hsv_g(phase);
+    uint16_t b = blip_hsv_b(phase);
 
-    s = lerp_u8_u16(huetab, phase + uint16_t(170) * uint16_t(256));
-    b = lerp_u8_u16_nowrap(cielum, s);
-		pixels[i].b = b >> 8;
+		pixels[i].r = blip_gamma(r);
+		pixels[i].g = blip_gamma(g);
+		pixels[i].b = blip_gamma(b);
     
-    phase += step;
+    phase += 5000;
 	}
 }
 
+//-----------------------------------------------------------------------------
 // VU-meter mode, tests the microphone & allows for direct visualization of
 // the audio intensity. The left 4 LEDs show the bass intensity, the right 4
 // show the treble intensity.
+
 void AudioMeter() {
-	blip_clear();
   // Divide the 16-bit intensity values down into the (0,1023) range.
-	uint16_t treb = ibright1 / 64;
-	uint16_t bass = ibright2 / 64;
+	uint16_t treb = blip_audio1 / 64;
+	uint16_t bass = blip_audio2 / 64;
   
 	for(int i = 3; i >= 0; i--) {
 		if(bass > 256) {
@@ -127,127 +117,140 @@ void AudioMeter() {
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Backwards-compatibility mode. :)
+
 void Bliplace1() {
-  uint8_t b1 = ibright1 >> 8;
-  uint8_t b2 = ibright2 >> 8;
-  
-  b1 = pgm_read_byte(cielum + b1);
-  b2 = pgm_read_byte(cielum + b2);
+  uint8_t b1 = blip_gamma(blip_audio1);
+  uint8_t b2 = blip_gamma(blip_audio2);
   
 	pixels[0].r = pixels[0].g = pixels[0].b = b1;
 	pixels[1].r = pixels[1].g = pixels[1].b = b1;
   
 	pixels[2].r = pixels[2].g = pixels[2].b = b2;
 	pixels[3].r = pixels[3].g = pixels[3].b = b2;
-	pixels[4].r = pixels[4].g = pixels[4].b = bright2 >> 0;
-	pixels[5].r = pixels[5].g = pixels[5].b = bright2 >> 0;
+	pixels[4].r = pixels[4].g = pixels[4].b = b2;
+	pixels[5].r = pixels[5].g = pixels[5].b = b2;
   
-	pixels[6].r = pixels[6].g = pixels[6].b = bright1 >> 0;
-	pixels[7].r = pixels[7].g = pixels[7].b = bright1 >> 0;
+	pixels[6].r = pixels[6].g = pixels[6].b = b1;
+	pixels[7].r = pixels[7].g = pixels[7].b = b1;
 }	
 
+//-----------------------------------------------------------------------------
 // All LEDs pulse in colors that approximate blackbody radiation,
 // gradually falling out of sync.
+
 void Blackbody() {
 	static uint16_t phases[8];
 	
 	for(uint8_t i = 0; i < 8; i++) {
-		phases[i] += rng() & 3;
-		uint8_t cursor = phases[i] >> 4;
-		pixels[i].r = pgm_read_byte(pulse_2_2 + cursor);
-		pixels[i].g = pgm_read_byte(pulse_2_3 + cursor);
-		pixels[i].b = pgm_read_byte(pulse_2_6 + cursor);
+		phases[i] += xor128() & 63;
+		uint16_t cursor = phases[i];
+    
+    uint16_t r = lerp_u8_u16(pulse_2_2, cursor);
+    uint16_t g = lerp_u8_u16(pulse_2_3, cursor);
+    uint16_t b = lerp_u8_u16(pulse_2_6, cursor);
+    
+		pixels[i].r = blip_gamma(r);
+		pixels[i].g = blip_gamma(g);
+		pixels[i].b = blip_gamma(b);
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Blue & green pulses that move back and forth with the beat.
+
 void DancingSapphire() {
 	static uint8_t dir = 0;
-	static uint8_t mode = 0;
-	static uint16_t timer;
+	static bool high = false;
 	
-	if(mode == 0) {
-		if(ibright2 > 16384 + 8192) {
-			mode = 1;
+	if(high) {
+		if(blip_audio2 < 8192) {
+			high = false;
+		}
+	} else {
+		if(blip_audio2 > 16384 + 8192) {
+			high = true;
 			dir = !dir;
 		}
-	} else {
-		if(ibright2 < 8192) {
-			mode = 0;
-		}
 	}
 	
-	const int step = 35;
-	
+	static uint16_t timer1;
+	static uint16_t timer2;
 	if(dir) {
-		timer += (ibright1 >> 10);
+		timer1 += (blip_audio1 >> 10);
+		timer2 += (blip_audio2 >> 10);
 	} else {
-		timer -= (ibright1 >> 10);
+		timer1 -= (blip_audio1 >> 10);
+		timer2 -= (blip_audio2 >> 10);
 	}
-	uint8_t phase = timer >> 8;
+  
+	uint16_t phase1 = timer1;
+	uint16_t phase2 = timer2;
 
 	for(int i = 0; i < 8; i++) {
-		uint8_t t1 = phase + (step * i);
-		uint8_t t2 = (255-phase) + (step * i);
-		uint8_t a = pgm_read_byte(pulse_5_4 + t1);
-		uint8_t b = pgm_read_byte(pulse_5_4 + t2);
-		pixels[i].g = a;
-		pixels[i].b = b;
+		uint16_t g = lerp_u8_u16(pulse_2_4, phase1);
+		uint16_t b = lerp_u8_u16(pulse_2_4, 65535 - phase2);
+		pixels[i].g = blip_gamma(g);
+		pixels[i].b = blip_gamma(b);
+    
+    phase1 += 8192;
+    phase2 += 8192;
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Medium-speed rainbow sine waves that react to sound - the green
 // channel blinks with treble, the red and blue with bass.
+
 void PulsingRainbows() {
-	const int stepR = 14;
-	const int stepG = 32;
-	const int stepB = 45;
+	uint16_t phase_r = blip_tick * 12;
+	uint16_t phase_g = -blip_tick * 9;
+	uint16_t phase_b = blip_tick * 15;
 
-	uint8_t phaseR = blip_tick / 10;
-	uint8_t phaseG = -blip_tick / 19;
-	uint8_t phaseB = blip_tick / 15;
-	
-	uint8_t t;
-	for(uint8_t i = 0; i < 8; i++) {
-		t = phaseR + stepR * i;
-		pixels[i].r = (pgm_read_byte(gammasin + t) * bright2) >> 8;
-		
-		t = phaseG + stepG * i;
-		pixels[i].g = (pgm_read_byte(gammasin + t) * bright1) >> 8;
+	for(int i = 0; i < 8; i++) {
+    uint16_t r = blip_scale(blip_sin(phase_r), blip_audio1);
+    uint16_t g = blip_scale(blip_sin(phase_g), blip_audio2);
+    uint16_t b = blip_scale(blip_sin(phase_b), blip_audio1);
 
-		t = phaseB + stepB * i;
-		pixels[i].b = (pgm_read_byte(gammasin + t) * bright2) >> 8;
-	}		
+		pixels[i].r = blip_gamma(r);
+		pixels[i].g = blip_gamma(g);
+		pixels[i].b = blip_gamma(b);
+    
+    phase_r += 7000;
+    phase_g += 8000;
+    phase_b += 9000;
+	}
 }	
  
+//-----------------------------------------------------------------------------
 // Slow, non-audio-responsive color fading. Good test for LED color mixing
 // smoothness.
-void SlowColorCycle() {
-	const int stepR = 25;
-	const int stepG = 26;
-	const int stepB = 27;
 
-	uint8_t phaseR = blip_tick / 79;
-	uint8_t phaseG = blip_tick / 82;
-	uint8_t phaseB = blip_tick / 65;
-	
-	uint8_t cursorR = phaseR;
-	uint8_t cursorG = phaseG;
-	uint8_t cursorB = phaseB;
+void SlowColorCycle() {
+	uint16_t phase_r = blip_tick * 3;
+	uint16_t phase_g = blip_tick * 4;
+	uint16_t phase_b = blip_tick * 5;
+
 	for(int i = 0; i < 8; i++) {
-		pixels[i].r = pgm_read_byte(gammasin + cursorR);
-		pixels[i].g = pgm_read_byte(gammasin + cursorG);
-		pixels[i].b = pgm_read_byte(gammasin + cursorB);
-		
-		cursorR += stepR;
-		cursorG += stepG;
-		cursorB += stepB;
-	}		
+    uint16_t r = blip_sin(phase_r);
+    uint16_t g = blip_sin(phase_g);
+    uint16_t b = blip_sin(phase_b);
+
+		pixels[i].r = blip_gamma(r);
+		pixels[i].g = blip_gamma(g);
+		pixels[i].b = blip_gamma(b);
+    
+    phase_r += 6500;
+    phase_g += 7000;
+    phase_b += 7500;
+	}
 }	
 
+//-----------------------------------------------------------------------------
 // Displays very fast-moving sine waves in all three color channels,
 // serves as a crude persistence-of-vision effect.
+
 void pov_test() {
 	static uint16_t timerR;
 	static uint16_t timerG;
@@ -281,49 +284,34 @@ void pov_test() {
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Blue sparkles that react to treble, big yellow blob in the middle
 // that reacts to bass.
+
 void SunAndStars() {
-	static uint16_t x[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-	
-	x[0] += 9;
-	x[1] += 12;
-	x[2] += 7;
-	x[3] += 13;
-	x[4] += 8;
-	x[5] += 11;
-	x[6] += 10;
-	x[7] += 9;
-	
-	pixels[0].b = pgm_read_byte(sparkles + uint8_t(x[0] >> 8));
-	pixels[1].b = pgm_read_byte(sparkles + uint8_t((x[1] >> 8) + 118));
-	pixels[2].b = pgm_read_byte(sparkles + uint8_t((x[2] >> 8) + 22));
-	pixels[3].b = pgm_read_byte(sparkles + uint8_t((x[3] >> 8) + 200));
-	pixels[4].b = pgm_read_byte(sparkles + uint8_t((x[4] >> 8) + 230));
-	pixels[5].b = pgm_read_byte(sparkles + uint8_t((x[5] >> 8) + 92));
-	pixels[6].b = pgm_read_byte(sparkles + uint8_t((x[6] >> 8) + 60));
-	pixels[7].b = pgm_read_byte(sparkles + uint8_t((x[7] >> 8) + 157));
+  uint16_t phase = blip_tick / 2;
+  
+  const uint8_t sun[] = {
+    5, 48, 128, 255, 255, 128, 48, 5
+  };
 	
 	for(int i = 0; i < 8; i++) {
-		pixels[i].b = (pixels[i].b * bright1) >> 8;
-	}		
-	
-	pixels[0].r = pixels[0].g = 5;
-	pixels[1].r = pixels[1].g = 48;
-	pixels[2].r = pixels[2].g = 128;
-	pixels[3].r = pixels[3].g = 255;
-	pixels[4].r = pixels[4].g = 255;
-	pixels[5].r = pixels[5].g = 128;
-	pixels[6].r = pixels[6].g = 48;
-	pixels[7].r = pixels[7].g = 5;
-	
-	for(int i = 0; i < 8; i++) {
-		pixels[i].r = (pixels[i].r * bright2) >> 8;
-		pixels[i].g = (pixels[i].g * bright2) >> 8;
+    // red = green = sun * audio2;
+    uint16_t s = sun[i] << 8;
+    s = blip_scale(s, blip_audio2);
+		pixels[i].r = pixels[i].g = blip_gamma(s);
+
+    // blue = noise^3 * audio1;
+    uint16_t b = blip_pow3(blip_noise(phase));
+    b = blip_scale(b, blip_audio1);
+    pixels[i].b = blip_gamma(b);
+    phase += 40503;
 	}		
 }
 
+//-----------------------------------------------------------------------------
 // Sparks shoot across from the left and split into rainbows.
+
 void RomanCandle() {
 	static uint8_t buffer[256];
 	static uint8_t tick = 0;
@@ -346,8 +334,10 @@ void RomanCandle() {
 	}
 }
 
+//-----------------------------------------------------------------------------
 // Sparks explode and split into colors. The 'explosion' source slowly moves
 // from side to side as well.
+
 void Fireworks() {
 	static uint8_t tick1 = 0;
 	static uint8_t tick2 = 0;
@@ -389,18 +379,19 @@ void Fireworks() {
 	}
 }
 
-
+//-----------------------------------------------------------------------------
 // 'Corners' of the mouth light up green with treble, center lights up
 // yellow-white with bass, dim blue background. Good audio visualization.
+
 void CheshireSmile() {
 
 	Pixel center[8] = {
 		{   5,   0,   0 },
 		{  48,   5,   0 },
-		{ 128,  48,   0 },
+		{ 158,  68,   0 },
 		{ 255, 192,  32 },
 		{ 255, 192,  32 },
-		{ 128,  48,   0 },
+		{ 128,  68,   0 },
 		{  48,   5,   0 },
 		{   5,   0,   0 },
 	};
@@ -416,49 +407,44 @@ void CheshireSmile() {
 		{   0, 128,   0 },
 	};
 
-	static uint16_t timer;
-	
-	const int speed = 77;
-	
-	timer += speed;
 	for(int i = 0; i < 8; i++) {
-		uint8_t r1 = (center[i].r * bright2) >> 8;
-		uint8_t g1 = (center[i].g * bright2) >> 8;
-		uint8_t b1 = (center[i].b * bright2) >> 8;
-
-		uint8_t r2 = (corners[i].r * bright1) >> 8;
-		uint8_t g2 = (corners[i].g * bright1) >> 8;
-		uint8_t b2 = (corners[i].b * bright1) >> 8;
-
-		pixels[i].r = (r1 + r2);
-		pixels[i].g = (g1 + g2);
-		pixels[i].b = (b1 + b2 + 8);
+    Color c1 = blip_scale(center[i], blip_audio2);
+    Color c2 = blip_scale(corners[i], blip_audio1);
+    
+    Color c3 = c1 + c2;
+    c3.b += 32 * 256;
+    
+    pixels[i].r = blip_gamma(c3.r);
+    pixels[i].g = blip_gamma(c3.g);
+    pixels[i].b = blip_gamma(c3.b);
 	}
 }	
 
+//-----------------------------------------------------------------------------
 // Glittery rainbow noise.
+
 void Confetti() {
-  const uint16_t step = 157 << 8;
-  uint16_t phase_r = (blip_tick * 3) >> 2;
-  uint16_t phase_g = (blip_tick * 5) >> 2;
-  uint16_t phase_b = (blip_tick * 2) >> 2;
+  uint16_t phase_r = blip_tick * 0.75;
+  uint16_t phase_g = blip_tick * 1.25;
+  uint16_t phase_b = blip_tick * 1.80;
   
   for(int i = 0; i < 8; i++) {
-    uint8_t r = lerp_u8_u8(noise, phase_r);
-    uint8_t g = lerp_u8_u8(noise, phase_g);
-    uint8_t b = lerp_u8_u8(noise, phase_b);
+    uint16_t r = blip_noise(phase_r);
+    uint16_t g = blip_noise(phase_g);
+    uint16_t b = blip_noise(phase_b);
     
-    r = (r * r) >> 8;
-    g = (g * g) >> 8;
-    b = (b * b) >> 8;
+    r = blip_scale(r, blip_audio1);
+    g = blip_scale(g, blip_audio2);
+    b = blip_scale(b, blip_audio2);
+    
+    pixels[i].r = blip_gamma(r);
+    pixels[i].g = blip_gamma(g);
+    pixels[i].b = blip_gamma(b);
 
-    pixels[i].r = (r * bright1) >> 8;
-    pixels[i].g = (g * bright2) >> 8;
-    pixels[i].b = (b * bright2) >> 8;
-
-    phase_r += step;
-    phase_g += step;
-    phase_b += step;
+    phase_r += 40503;
+    phase_g += 40503;
+    phase_b += 40503;
   }    
 }  
 
+//-----------------------------------------------------------------------------

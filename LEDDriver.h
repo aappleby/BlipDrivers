@@ -49,10 +49,10 @@ extern uint16_t tmax1;
 extern uint16_t tmax2;
 
 // Brightness cursor, treble channel.
-extern uint16_t ibright1;
+extern uint16_t blip_audio1;
 
 // Brightness cursor, bass channel.
-extern uint16_t ibright2;
+extern uint16_t blip_audio2;
 
 
 #ifdef __cplusplus

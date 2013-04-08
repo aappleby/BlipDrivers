@@ -1,20 +1,70 @@
 #include "Math.h"
+#include "Tables.h"
+
 #include <stdint.h>
 
 #include <avr/pgmspace.h>
 
-struct fixed {
-  fixed() {};
-  fixed(int16_t v2) { v = v2; };
-  fixed& operator = (int16_t v2) { v = v2; return *this; }
-  fixed& operator = (const fixed& v2) { v = v2.v; return *this; }
-  fixed& operator = (volatile fixed v2) { v = v2.v; return *this; }
-  __attribute__((noinline)) fixed operator * (fixed b) {
-    return int32_t(v) * int32_t(b.v) >> 12;
+Color Color::fromHue(uint16_t h) {
+  Color c;
+  c.r = blip_hsv_r(h);
+  c.g = blip_hsv_g(h);
+  c.b = blip_hsv_b(h);
+  return c;
+}
+
+Color Color::fromHue(float h) {
+  return fromHue(uint16_t(h * 65536));
+}
+  
+Color Color::fromHue(double h) {
+  return fromHue(uint16_t(float(h) * 65536));
+}
+
+uint8_t hex2dec(char code) {
+  uint8_t x = code - 48;
+  if(x > 9) x -= 7;
+  if(x > 15) x -= 32;
+  return x;
+}  
+
+Color Color::fromHex(const char* code) {
+  uint8_t r, g, b;
+  
+  if (code[3] == 0) {
+    // rgb
+    r = hex2dec(code[0]);
+    g = hex2dec(code[1]);
+    b = hex2dec(code[2]);
+    r |= r << 4;
+    g |= g << 4;
+    b |= b << 4;
   }
-  operator int16_t() const { return v; }
-  int16_t v;
-};  
+  else if (code[4] == 0) {
+    // #rgb
+    r = hex2dec(code[1]);
+    g = hex2dec(code[2]);
+    b = hex2dec(code[3]);
+    r |= r << 4;
+    g |= g << 4;
+    b |= b << 4;
+  }    
+  else if(code[0] == '#') {
+    // #rrggbb
+    r = hex2dec(code[1]) * 16 + hex2dec(code[2]);
+    g = hex2dec(code[3]) * 16 + hex2dec(code[4]);
+    b = hex2dec(code[5]) * 16 + hex2dec(code[6]);
+  }
+  else {
+    // rrggbb
+    r = hex2dec(code[0]) * 16 + hex2dec(code[1]);
+    g = hex2dec(code[2]) * 16 + hex2dec(code[3]);
+    b = hex2dec(code[4]) * 16 + hex2dec(code[5]);
+  }
+  return Color(r,g,b);
+}  
+  
+
 
 
 // Xorshift RNG, from Wikipedia.
@@ -30,8 +80,43 @@ uint32_t xor128(void) {
   return w = w ^ (w >> 19) ^ (t ^ (t >> 8));
 }
 
+// Multiply two unsigned 16-bit fractions.
+__attribute__((naked)) uint16_t mul_uu16(uint16_t a, uint16_t b) {
+  asm("clr r26");
+  
+  // r19:r18 = a
+  asm("movw r18, r24");
+
+  // r21:r20 = b  
+  asm("movw r20, r22");
+  
+  // r25:r24:r23:r22 = scratch
+  // scratch = ((signed)ah * (signed)bh) << 16;
+  asm("mul r19, r21");
+  asm("movw r24, r0");
+  
+  // scratch += al*bl
+  asm("mul r18, r20");
+  asm("movw r22, r0");
+  
+  // ah * bl
+  asm("mul r19, r20");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // bh * al
+  asm("mul r21, r18");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  asm("clr r1");
+  asm("ret");
+}
+
 // Multiply two signed 16-bit fractions.
-__attribute__((naked)) int16_t mul_s16(int16_t a, int16_t b) {
+__attribute__((naked)) int16_t mul_ss16(int16_t a, int16_t b) {
   // r26 = 0
   asm("clr r26");
 
@@ -64,23 +149,31 @@ __attribute__((naked)) int16_t mul_s16(int16_t a, int16_t b) {
   asm("adc r24, r1");
   asm("adc r25, r26");
   
+  // The result effectively has two sign bits, so shift
+  // it left 1 bit.  
+  asm("rol r23");
+  asm("rol r24");
+  asm("rol r25");
+  
   asm("clr r1");
   asm("ret");
-}  
+}
 
-// Multiply two unsigned 16-bit fractions.
-__attribute__((naked)) uint16_t mul_u16(uint16_t a, uint16_t b) {
+// Multiply one signed and one unsigned 16-bit fraction.
+__attribute__((naked)) int16_t mul_su16(int16_t a, uint16_t b) {
+  // r26 = 0
   asm("clr r26");
-  
+
   // r19:r18 = a
   asm("movw r18, r24");
 
-  // r21:r20 = b  
+  // r21:r20 = b
   asm("movw r20, r22");
   
   // r25:r24:r23:r22 = scratch
-  // scratch = ((signed)ah * (signed)bh) << 16;
-  asm("mul r19, r21");
+  
+  // scratch = ((signed)ah * bh) << 16;
+  asm("mulsu r19, r21");
   asm("movw r24, r0");
   
   // scratch += al*bl
@@ -88,13 +181,52 @@ __attribute__((naked)) uint16_t mul_u16(uint16_t a, uint16_t b) {
   asm("movw r22, r0");
   
   // (signed)ah * bl
+  asm("mulsu r19, r20");
+  asm("sbc r25, r26");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // bh * al
+  asm("mul r21, r18");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+
+  asm("clr r1");
+  asm("ret");
+}  
+
+
+// Multiply one unsigned and one signed 16-bit fraction.
+__attribute__((naked)) int16_t mul_us16(uint16_t a, int16_t b) {
+  // r26 = 0
+  asm("clr r26");
+
+  // r19:r18 = a
+  asm("movw r18, r24");
+
+  // r21:r20 = b
+  asm("movw r20, r22");
+  
+  // r25:r24:r23:r22 = scratch
+  // scratch = (ah * (signed)bh) << 16;
+  asm("mulsu r21, r19");
+  asm("movw r24, r0");
+  
+  // scratch += al*bl
+  asm("mul r18, r20");
+  asm("movw r22, r0");
+  
+  // ah * bl
   asm("mul r19, r20");
   asm("add r23, r0");
   asm("adc r24, r1");
   asm("adc r25, r26");
   
   // (signed)bh * al
-  asm("mul r21, r18");
+  asm("mulsu r21, r18");
+  asm("sbc r25, r26");
   asm("add r23, r0");
   asm("adc r24, r1");
   asm("adc r25, r26");
@@ -102,6 +234,9 @@ __attribute__((naked)) uint16_t mul_u16(uint16_t a, uint16_t b) {
   asm("clr r1");
   asm("ret");
 }
+
+
+
 
 // Interpolate between two unsigned 8-bit numbers.
 __attribute__((naked)) uint8_t lerp_u8(uint8_t x1, uint8_t x2, uint8_t t) {
@@ -323,6 +458,11 @@ __attribute__((naked)) uint16_t lerp_u8_u16_nowrap(const uint8_t* table, uint16_
 }
 
 
+uint8_t lerp_u8_u8_nowrap(const uint8_t* table, uint16_t x) {
+  return lerp_u8_u16_nowrap(table, x) >> 8;
+}  
+
+
 // Interpolate between elements in a 16-bit table, no wrapping.
 __attribute__((naked)) uint16_t lerp_u16_u16_nowrap(const uint16_t* table, uint16_t x) {
   // scratch = 0;
@@ -393,3 +533,114 @@ uint8_t imagelerp_u8(const uint8_t* image, uint16_t x) {
   
   return ((b * s) + (a * t) + a) >> 8;
 }
+
+uint16_t blip_sin(uint16_t x) {
+  return lerp_u8_u16(sintab, x);
+}
+
+uint16_t blip_cos(uint16_t x) {
+  return lerp_u8_u16(sintab, x + 16384);
+}
+
+int16_t blip_ssin(uint16_t x) {
+  return blip_sin(x) ^ 0x8000;
+}  
+
+int16_t blip_scos(uint16_t x) {
+  return blip_cos(x) ^ 0x8000;
+}  
+
+uint16_t blip_scale(uint16_t x, uint16_t s) {
+  return mul_uu16(x, s);
+}
+
+int16_t blip_scale(int16_t x, uint16_t s) {
+  return mul_ss16(x, s);
+}  
+
+// 'Smooth' add - 
+uint16_t blip_smadd(uint16_t a, uint16_t b) {
+  return a + b - mul_uu16(a, b);
+}  
+
+uint16_t blip_hsv_r(uint16_t h) {
+  return lerp_u8_u16(huetab, h);
+}
+
+uint16_t blip_hsv_g(uint16_t h) {
+  return lerp_u8_u16(huetab, h + 21845);
+}
+
+uint16_t blip_hsv_b(uint16_t h) {
+  return lerp_u8_u16(huetab, h + 43690);
+}
+
+uint8_t blip_gamma(uint8_t x) {
+  return pgm_read_byte(cielum + x);
+}
+
+// TODO(aappleby): The cie luminosity function is overkill,
+// and interpolating it is doubly overkill. Is x^2 gamma good
+// enough?
+uint8_t blip_gamma(uint16_t x) {
+  //return lerp_u8_u8_nowrap(cielum, x);
+  //return pgm_read_byte(cielum + (x >> 8));
+  uint8_t y = (x >> 8);
+  return (y * y) >> 8;
+}
+
+uint16_t blip_pow2(uint16_t x) {
+  return blip_scale(x, x);
+}
+
+uint16_t blip_pow3(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  return blip_scale(x, x2);
+}
+  
+uint16_t blip_pow4(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  return blip_scale(x2, x2);
+}
+  
+uint16_t blip_pow5(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  uint16_t x3 = blip_scale(x, x2);
+  return blip_scale(x2, x3);
+}  
+
+uint16_t blip_noise(uint16_t x) {
+  return lerp_u8_u16(noise, x);
+}
+
+
+Color blip_scale(Color const& c, uint16_t s) {
+  return Color(blip_scale(c.r, s),
+               blip_scale(c.g, s),
+               blip_scale(c.b, s));
+}
+
+
+Color blip_scale(Color const& c, uint16_t s1, uint16_t s2) {
+  return Color(blip_scale(blip_scale(c.r, s1), s2),
+               blip_scale(blip_scale(c.g, s1), s2),
+               blip_scale(blip_scale(c.b, s1), s2));
+}
+
+
+Color operator + (Color const& a, Color const& b) {
+  return Color(a.r + b.r, a.g + b.g, a.b + b.b);
+}
+
+Color blip_smadd(Color const& a, Color const& b) {
+  return Color(blip_smadd(a.r, b.r),
+               blip_smadd(a.g, b.g),
+               blip_smadd(a.b, b.b));
+}
+
+Color blip_lerp(Color const& a, Color const& b, uint16_t x) {
+  uint8_t t = x >> 8;
+  return Color(lerp_u16(a.r, b.r, t),
+               lerp_u16(a.g, b.g, t),
+               lerp_u16(a.b, b.b, t));
+}  
