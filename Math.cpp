@@ -414,6 +414,57 @@ __attribute__((naked)) uint16_t lerp_u8_u16(const uint8_t* table, uint16_t x) {
 }
 
 
+// Interpolate between elements in a 256-element, 8-bit table, with wrapping,
+// expanding the table value out to 16 bits.
+__attribute__((naked)) uint16_t lerp_u8_u16_ram(uint8_t* table, uint16_t x) {
+  asm("clr r20");
+  asm("clr r21");
+  
+  // y1 = table[(x >> 8)]
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("ld r26, z");
+
+  // x1++;
+  asm("inc r23");
+  
+  // y2 = table[(x >> 8) + 1];
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("ld r27, z");
+  
+  // scratch = (y2 * 257) * t
+  asm("mul r27, r22");
+  asm("movw r18, r0");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // t = ~t
+  asm("com r22");
+  
+  // scratch += (y1 * 257) * ~t
+  asm("mul r26, r22");
+  asm("add r18, r0");
+  asm("adc r19, r1");
+  asm("adc r20, r21");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // scratch += (y1 * 257)
+  asm("add r18, r26");
+  asm("adc r19, r26");
+  asm("adc r20, r21");
+  
+  // result = scratch >> 8
+  asm("mov r24, r19");
+  asm("mov r25, r20");
+  
+  asm("clr r1");
+  asm("ret");
+}
+
 // Interpolate between elements in a 256-element, signed 8-bit table, with wrapping,
 // expanding the table values out to a signed 16-bit value.
 // input r25:r24 - table
@@ -682,6 +733,19 @@ uint16_t blip_pow5(uint16_t x) {
   uint16_t x2 = blip_scale(x, x);
   uint16_t x3 = blip_scale(x, x2);
   return blip_scale(x2, x3);
+}  
+
+uint16_t blip_pow6(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  uint16_t x3 = blip_scale(x, x2);
+  return blip_scale(x3, x3);
+}  
+
+uint16_t blip_pow7(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  uint16_t x3 = blip_scale(x, x2);
+  uint16_t x4 = blip_scale(x2, x2);
+  return blip_scale(x3, x4);
 }  
 
 uint16_t blip_noise(uint16_t x) {

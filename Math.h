@@ -29,6 +29,8 @@ uint16_t blip_pow2(uint16_t x);
 uint16_t blip_pow3(uint16_t x);
 uint16_t blip_pow4(uint16_t x);
 uint16_t blip_pow5(uint16_t x);
+uint16_t blip_pow6(uint16_t x);
+uint16_t blip_pow7(uint16_t x);
 
 uint16_t blip_noise(uint16_t x);
 
@@ -154,6 +156,8 @@ uint8_t  lerp_u8_u8  (const uint8_t* table, uint16_t x);
 // Produces a 16-bit result for better precision.
 uint16_t lerp_u8_u16 (const uint8_t* table, uint16_t x);
 
+uint16_t lerp_u8_u16_ram(uint8_t* table, uint16_t x);
+
 int16_t lerp_s8_s16(const int8_t* table, uint16_t x);
 int16_t lerp_s8_s16(const int8_t* table, int16_t x);
 
@@ -166,7 +170,7 @@ uint16_t lerp_u16_u16_nowrap(const uint16_t* table, uint16_t x);
 // Same as above, but with a 16-bit table.
 uint16_t lerp_u16_u16_nowrap (const uint16_t* table, uint16_t x);
 
-// Interpolates between adjacent pixels in an image.
+// Interpolates between adjacent blip_pixels in an image.
 uint8_t imagelerp_u8(const uint8_t* image, uint16_t x);
 
 #endif /* MATH_H_ */

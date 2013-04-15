@@ -12,12 +12,12 @@
 void button_test() {
 	blip_clear();
 	for(int i = 0; i < 4; i++) {
-		if(buttonstate1) pixels[i].g = 0xFF;
-		else pixels[i].r = 0xFF;
+		if(buttonstate1) blip_pixels[i].g = 0xFF;
+		else blip_pixels[i].r = 0xFF;
 	}
 	for(int i = 4; i < 8; i++) {
-		if(buttonstate2) pixels[i].g = 0xFF;
-		else pixels[i].r = 0xFF;
+		if(buttonstate2) blip_pixels[i].g = 0xFF;
+		else blip_pixels[i].r = 0xFF;
 	}
 }
 
@@ -28,7 +28,7 @@ void red_test() {
 	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
     uint16_t r = blip_sin(phase);
-		pixels[i].r = blip_gamma(r);
+		blip_pixels[i].r = blip_gamma(r);
     phase += 8000;
 	}
 }	
@@ -40,7 +40,7 @@ void green_test() {
 	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
     uint16_t g = blip_sin(phase);
-		pixels[i].g = blip_gamma(g);
+		blip_pixels[i].g = blip_gamma(g);
     phase += 8000;
 	}
 }
@@ -52,7 +52,7 @@ void blue_test() {
 	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
     uint16_t b = blip_sin(phase);
-		pixels[i].b = blip_gamma(b);
+		blip_pixels[i].b = blip_gamma(b);
     phase += 8000;
 	}
 }
@@ -68,9 +68,9 @@ void hsv_test() {
     uint16_t g = blip_hsv_g(phase);
     uint16_t b = blip_hsv_b(phase);
 
-		pixels[i].r = blip_gamma(r);
-		pixels[i].g = blip_gamma(g);
-		pixels[i].b = blip_gamma(b);
+		blip_pixels[i].r = blip_gamma(r);
+		blip_pixels[i].g = blip_gamma(g);
+		blip_pixels[i].b = blip_gamma(b);
     
     phase += 5000;
 	}
@@ -84,34 +84,34 @@ void hsv_test() {
 void AudioMeter() {
   // Divide the 16-bit intensity values down into the (0,1023) range.
 	uint16_t treb = blip_audio1 / 64;
-	uint16_t bass = blip_audio2 / 64;
+	uint16_t blip_sample2 = blip_audio2 / 64;
   
 	for(int i = 3; i >= 0; i--) {
-		if(bass > 256) {
-			pixels[i].r = 0xFF;
-			pixels[i].g = 0xFF >> 2;
-			bass -= 256;
+		if(blip_sample2 > 256) {
+			blip_pixels[i].r = 0xFF;
+			blip_pixels[i].g = 0xFF >> 2;
+			blip_sample2 -= 256;
 		}
 		else 
 		{
-			bass = (bass * bass) >> 8;
-			pixels[i].r = bass;
-			pixels[i].g = bass >> 2;
+			blip_sample2 = (blip_sample2 * blip_sample2) >> 8;
+			blip_pixels[i].r = blip_sample2;
+			blip_pixels[i].g = blip_sample2 >> 2;
 			break;
 		}
 	}
   
 	for(int i = 4; i < 8; i++) {
 		if(treb > 256) {
-			pixels[i].b = 0xFF >> 2;
-			pixels[i].g = 0xFF;
+			blip_pixels[i].b = 0xFF >> 2;
+			blip_pixels[i].g = 0xFF;
 			treb -= 256;
 		}
 		else
 		{
 			treb = (treb * treb) >> 8;
-			pixels[i].b = treb >> 2;
-			pixels[i].g = treb;
+			blip_pixels[i].b = treb >> 2;
+			blip_pixels[i].g = treb;
 			break;
 		}
 	}
@@ -124,16 +124,16 @@ void Bliplace1() {
   uint8_t b1 = blip_gamma(blip_audio1);
   uint8_t b2 = blip_gamma(blip_audio2);
   
-	pixels[0].r = pixels[0].g = pixels[0].b = b1;
-	pixels[1].r = pixels[1].g = pixels[1].b = b1;
+	blip_pixels[0].r = blip_pixels[0].g = blip_pixels[0].b = b1;
+	blip_pixels[1].r = blip_pixels[1].g = blip_pixels[1].b = b1;
   
-	pixels[2].r = pixels[2].g = pixels[2].b = b2;
-	pixels[3].r = pixels[3].g = pixels[3].b = b2;
-	pixels[4].r = pixels[4].g = pixels[4].b = b2;
-	pixels[5].r = pixels[5].g = pixels[5].b = b2;
+	blip_pixels[2].r = blip_pixels[2].g = blip_pixels[2].b = b2;
+	blip_pixels[3].r = blip_pixels[3].g = blip_pixels[3].b = b2;
+	blip_pixels[4].r = blip_pixels[4].g = blip_pixels[4].b = b2;
+	blip_pixels[5].r = blip_pixels[5].g = blip_pixels[5].b = b2;
   
-	pixels[6].r = pixels[6].g = pixels[6].b = b1;
-	pixels[7].r = pixels[7].g = pixels[7].b = b1;
+	blip_pixels[6].r = blip_pixels[6].g = blip_pixels[6].b = b1;
+	blip_pixels[7].r = blip_pixels[7].g = blip_pixels[7].b = b1;
 }	
 
 //-----------------------------------------------------------------------------
@@ -151,9 +151,9 @@ void Blackbody() {
     uint16_t g = lerp_u8_u16(pulse_2_3, cursor);
     uint16_t b = lerp_u8_u16(pulse_2_6, cursor);
     
-		pixels[i].r = blip_gamma(r);
-		pixels[i].g = blip_gamma(g);
-		pixels[i].b = blip_gamma(b);
+		blip_pixels[i].r = blip_gamma(r);
+		blip_pixels[i].g = blip_gamma(g);
+		blip_pixels[i].b = blip_gamma(b);
 	}
 }
 
@@ -191,8 +191,8 @@ void DancingSapphire() {
 	for(int i = 0; i < 8; i++) {
 		uint16_t g = lerp_u8_u16(pulse_2_4, phase1);
 		uint16_t b = lerp_u8_u16(pulse_2_4, 65535 - phase2);
-		pixels[i].g = blip_gamma(g);
-		pixels[i].b = blip_gamma(b);
+		blip_pixels[i].g = blip_gamma(g);
+		blip_pixels[i].b = blip_gamma(b);
     
     phase1 += 8192;
     phase2 += 8192;
@@ -213,9 +213,9 @@ void PulsingRainbows() {
     uint16_t g = blip_scale(blip_sin(phase_g), blip_audio2);
     uint16_t b = blip_scale(blip_sin(phase_b), blip_audio1);
 
-		pixels[i].r = blip_gamma(r);
-		pixels[i].g = blip_gamma(g);
-		pixels[i].b = blip_gamma(b);
+		blip_pixels[i].r = blip_gamma(r);
+		blip_pixels[i].g = blip_gamma(g);
+		blip_pixels[i].b = blip_gamma(b);
     
     phase_r += 7000;
     phase_g += 8000;
@@ -237,9 +237,9 @@ void SlowColorCycle() {
     uint16_t g = blip_sin(phase_g);
     uint16_t b = blip_sin(phase_b);
 
-		pixels[i].r = blip_gamma(r);
-		pixels[i].g = blip_gamma(g);
-		pixels[i].b = blip_gamma(b);
+		blip_pixels[i].r = blip_gamma(r);
+		blip_pixels[i].g = blip_gamma(g);
+		blip_pixels[i].b = blip_gamma(b);
     
     phase_r += 6500;
     phase_g += 7000;
@@ -274,9 +274,9 @@ void pov_test() {
 	uint8_t cursorG = phaseG;
 	uint8_t cursorB = phaseB;
 	for(int i = 0; i < 8; i++) {
-		pixels[i].r = pgm_read_byte(gammapulse + cursorR);
-		pixels[i].g = pgm_read_byte(gammapulse + cursorG);
-		pixels[i].b = pgm_read_byte(gammapulse + cursorB);
+		blip_pixels[i].r = pgm_read_byte(pulse_5_6 + cursorR);
+		blip_pixels[i].g = pgm_read_byte(pulse_5_6 + cursorG);
+		blip_pixels[i].b = pgm_read_byte(pulse_5_6 + cursorB);
 		
 		cursorR += stepR;
 		cursorG += stepG;
@@ -299,12 +299,12 @@ void SunAndStars() {
     // red = green = sun * audio2;
     uint16_t s = sun[i] << 8;
     s = blip_scale(s, blip_audio2);
-		pixels[i].r = pixels[i].g = blip_gamma(s);
+		blip_pixels[i].r = blip_pixels[i].g = blip_gamma(s);
 
     // blue = noise^3 * audio1;
     uint16_t b = blip_pow3(blip_noise(phase));
     b = blip_scale(b, blip_audio1);
-    pixels[i].b = blip_gamma(b);
+    blip_pixels[i].b = blip_gamma(b);
     phase += 40503;
 	}		
 }
@@ -313,31 +313,27 @@ void SunAndStars() {
 // Sparks shoot across from the left and split into rainbows.
 
 void RomanCandle() {
-	static uint8_t buffer[256];
-	static uint8_t tick = 0;
-	static uint8_t cursor = 0;
 	
-	tick++;
-	if(tick == 7) {
-		tick = 0;
-		cursor--;
-		buffer[cursor] = (bright2 * bright2) >> 8;
-	}
-	
-	for(int i = 0; i < 8; i++) {
-		uint8_t x1 = (i * 16) + cursor;
-		pixels[i].g = buffer[x1];
-		uint8_t x2 = (i * 32) + cursor;
-		pixels[i].r = buffer[x2];
-		uint8_t x3 = (i * 24) + cursor;
-		pixels[i].b = buffer[x3];
-	}
+  uint16_t cursor_r = blip_tick;
+  uint16_t cursor_g = cursor_r;
+  uint16_t cursor_b = cursor_r;
+  
+  for(int i = 0; i < 8; i++) {
+    blip_pixels[i].r = blip_gamma(blip_pow2(lerp_u8_u16_ram(blip_history2, cursor_r)));
+    blip_pixels[i].g = blip_gamma(blip_pow2(lerp_u8_u16_ram(blip_history2, cursor_g)));
+    blip_pixels[i].b = blip_gamma(blip_pow2(lerp_u8_u16_ram(blip_history2, cursor_b)));
+    
+    cursor_r -= 192;
+    cursor_g -= 128;
+    cursor_b -= 256;
+  }    
 }
 
 //-----------------------------------------------------------------------------
 // Sparks explode and split into colors. The 'explosion' source slowly moves
 // from side to side as well.
 
+/*
 void Fireworks() {
 	static uint8_t tick1 = 0;
 	static uint8_t tick2 = 0;
@@ -350,6 +346,7 @@ void Fireworks() {
 	{
 		tick1 = 0;
 		cursor--;
+    uint8_t bright = (blip_audio2 >> 8);
 		buffer[cursor] = (bright2 * bright2) >> 8;
 	}
 	
@@ -373,11 +370,12 @@ void Fireworks() {
 		uint8_t t2 = t / 5 + cursor;
 		uint8_t t3 = t / 3 + cursor;
 		
-		pixels[i].r = buffer[t1];
-		pixels[i].g = buffer[t2];
-		pixels[i].b = buffer[t3];
+		blip_pixels[i].r = buffer[t1];
+		blip_pixels[i].g = buffer[t2];
+		blip_pixels[i].b = buffer[t3];
 	}
 }
+*/
 
 //-----------------------------------------------------------------------------
 // 'Corners' of the mouth light up green with treble, center lights up
@@ -414,9 +412,9 @@ void CheshireSmile() {
     Color c3 = c1 + c2;
     c3.b += 32 * 256;
     
-    pixels[i].r = blip_gamma(c3.r);
-    pixels[i].g = blip_gamma(c3.g);
-    pixels[i].b = blip_gamma(c3.b);
+    blip_pixels[i].r = blip_gamma(c3.r);
+    blip_pixels[i].g = blip_gamma(c3.g);
+    blip_pixels[i].b = blip_gamma(c3.b);
 	}
 }	
 
@@ -437,9 +435,9 @@ void Confetti() {
     g = blip_scale(g, blip_audio2);
     b = blip_scale(b, blip_audio2);
     
-    pixels[i].r = blip_gamma(r);
-    pixels[i].g = blip_gamma(g);
-    pixels[i].b = blip_gamma(b);
+    blip_pixels[i].r = blip_gamma(r);
+    blip_pixels[i].g = blip_gamma(g);
+    blip_pixels[i].b = blip_gamma(b);
 
     phase_r += 40503;
     phase_g += 40503;

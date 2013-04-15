@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <stdfix.h>
 
+#include <avr/wdt.h>
+
 #define F_CPU 8000000
 
 #include <avr/interrupt.h>
@@ -24,18 +26,18 @@ typedef void (*pattern_callback)();
 int pattern_index = 0;
 
 pattern_callback patterns[] = {
+	AudioMeter,
+	SlowColorCycle,
+	RomanCandle,
 	CheshireSmile,
   Confetti,
 	SunAndStars,
 	DancingSapphire,
   hsv_test,
 	Blackbody,
-	AudioMeter,
 	Bliplace1,
-	SlowColorCycle,
 	PulsingRainbows,
-	RomanCandle,
-	Fireworks,
+	//Fireworks,
   
   /*
 	pov_test,
@@ -45,38 +47,21 @@ pattern_callback patterns[] = {
   */
 };
 
-
 int main(void)
 {
-  //int16_t x = lerp_s8_s16(ssintab, (16 * 256) + 100);
-  
-  /*
-  for(int i = 0; i < 30000; i++) {
-    uint16_t a = xor128();
-    int16_t b = xor128();
-    
-    int32_t x1 = (int32_t(a) * int32_t(b)) >> 16;
-    int32_t x2 = mul_us16(a, b);
-    
-    if(x1 != x2) {
-      result = 0;
-    }      
-  }
-  */
-  
-	SetupLEDs();
+	blip_setup();
   
   const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
   
 	while(1) {
     UpdateSleep();
     
-    /*
     if((buttonstate1 == 1) && (debounce_down1 > 256)) {
       pattern_index = (pattern_index + 1) % pattern_count;
       debounce_down1 = 0;
     }
 		
+    /*
 		blip_clear();
 
     const Color grape = Color::fromHex("421C52");
@@ -88,7 +73,7 @@ int main(void)
     for(int i = 0; i < 8; i++) {
       int16_t b1 = lerp_s8_s16(ssintab, phase);
       uint16_t b2 = b1 + 32768;
-      pixels[i] = blip_scale(peach, b2);
+      blip_pixels[i] = blip_scale(peach, b2);
     }
     */
     
@@ -102,7 +87,7 @@ int main(void)
       
       offset = mul_su16(offset, blip_audio1);
       
-      pixels[i] = blip_scale(peach, blip_sin(phase1 + offset));
+      blip_pixels[i] = blip_scale(peach, blip_sin(phase1 + offset));
       
       phase1 += 32 * 256;
     }
@@ -114,14 +99,15 @@ int main(void)
     const Color grape = Color::fromHex("5528b2");
     const Color lemon = Color::fromHex("ffff00");
 
-    pixels[0] = blip_scale(pine, blip_audio1);
-    pixels[1] = blip_scale(peach, blip_audio2);
-    pixels[2] = blip_lerp(grape, lemon, blip_sin(blip_tick * 10));
+    blip_pixels[0] = blip_scale(pine, blip_audio1);
+    blip_pixels[1] = blip_scale(peach, blip_audio2);
+    blip_pixels[2] = blip_lerp(grape, lemon, blip_sin(blip_tick * 10));
     
-    pixels[3] = blip_smadd(blip_scale(pine, blip_audio1),
+    blip_pixels[3] = blip_smadd(blip_scale(pine, blip_audio1),
                            blip_scale(grape, blip_audio2));
     */
 
+    blip_clear();
     patterns[pattern_index]();
 		blip_swap();
 	}
