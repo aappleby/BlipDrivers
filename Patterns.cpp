@@ -6,7 +6,7 @@
 #include <avr/pgmspace.h>
 #include <math.h>
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Tests button functionality.
 
 void button_test() {
@@ -21,7 +21,7 @@ void button_test() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Sine waves in the red channel.
 
 void red_test() {
@@ -33,7 +33,7 @@ void red_test() {
 	}
 }	
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Sine waves in the green channel.
 
 void green_test() {
@@ -45,7 +45,7 @@ void green_test() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Sine waves in the blue channel.
 
 void blue_test() {
@@ -57,7 +57,7 @@ void blue_test() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Scrolling rainbow, tests table interpolation.
 
 void hsv_test() {
@@ -76,15 +76,15 @@ void hsv_test() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // VU-meter mode, tests the microphone & allows for direct visualization of
 // the audio intensity. The left 4 LEDs show the bass intensity, the right 4
 // show the treble intensity.
 
 void AudioMeter() {
   // Divide the 16-bit intensity values down into the (0,1023) range.
-	uint16_t treb = blip_audio1 / 64;
-	uint16_t blip_sample2 = blip_audio2 / 64;
+	uint16_t treb = blip_bright1 / 64;
+	uint16_t blip_sample2 = blip_bright2 / 64;
   
 	for(int i = 3; i >= 0; i--) {
 		if(blip_sample2 > 256) {
@@ -117,12 +117,12 @@ void AudioMeter() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Backwards-compatibility mode. :)
 
 void Bliplace1() {
-  uint8_t b1 = blip_gamma(blip_audio1);
-  uint8_t b2 = blip_gamma(blip_audio2);
+  uint8_t b1 = blip_gamma(blip_bright1);
+  uint8_t b2 = blip_gamma(blip_bright2);
   
 	blip_pixels[0].r = blip_pixels[0].g = blip_pixels[0].b = b1;
 	blip_pixels[1].r = blip_pixels[1].g = blip_pixels[1].b = b1;
@@ -136,7 +136,7 @@ void Bliplace1() {
 	blip_pixels[7].r = blip_pixels[7].g = blip_pixels[7].b = b1;
 }	
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // All LEDs pulse in colors that approximate blackbody radiation,
 // gradually falling out of sync.
 
@@ -157,7 +157,7 @@ void Blackbody() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Blue & green pulses that move back and forth with the beat.
 
 void DancingSapphire() {
@@ -165,11 +165,11 @@ void DancingSapphire() {
 	static bool high = false;
 	
 	if(high) {
-		if(blip_audio2 < 8192) {
+		if(blip_bright2 < 8192) {
 			high = false;
 		}
 	} else {
-		if(blip_audio2 > 16384 + 8192) {
+		if(blip_bright2 > 16384 + 8192) {
 			high = true;
 			dir = !dir;
 		}
@@ -178,11 +178,11 @@ void DancingSapphire() {
 	static uint16_t timer1;
 	static uint16_t timer2;
 	if(dir) {
-		timer1 += (blip_audio1 >> 10);
-		timer2 += (blip_audio2 >> 10);
+		timer1 += (blip_bright1 >> 10);
+		timer2 += (blip_bright2 >> 10);
 	} else {
-		timer1 -= (blip_audio1 >> 10);
-		timer2 -= (blip_audio2 >> 10);
+		timer1 -= (blip_bright1 >> 10);
+		timer2 -= (blip_bright2 >> 10);
 	}
   
 	uint16_t phase1 = timer1;
@@ -199,7 +199,7 @@ void DancingSapphire() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Medium-speed rainbow sine waves that react to sound - the green
 // channel blinks with treble, the red and blue with bass.
 
@@ -209,9 +209,9 @@ void PulsingRainbows() {
 	uint16_t phase_b = blip_tick * 15;
 
 	for(int i = 0; i < 8; i++) {
-    uint16_t r = blip_scale(blip_sin(phase_r), blip_audio1);
-    uint16_t g = blip_scale(blip_sin(phase_g), blip_audio2);
-    uint16_t b = blip_scale(blip_sin(phase_b), blip_audio1);
+    uint16_t r = blip_scale(blip_sin(phase_r), blip_bright1);
+    uint16_t g = blip_scale(blip_sin(phase_g), blip_bright2);
+    uint16_t b = blip_scale(blip_sin(phase_b), blip_bright1);
 
 		blip_pixels[i].r = blip_gamma(r);
 		blip_pixels[i].g = blip_gamma(g);
@@ -223,7 +223,7 @@ void PulsingRainbows() {
 	}
 }	
  
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Slow, non-audio-responsive color fading. Good test for LED color mixing
 // smoothness.
 
@@ -247,7 +247,7 @@ void SlowColorCycle() {
 	}
 }	
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Displays very fast-moving sine waves in all three color channels,
 // serves as a crude persistence-of-vision effect.
 
@@ -284,7 +284,7 @@ void pov_test() {
 	}
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Blue sparkles that react to treble, big yellow blob in the middle
 // that reacts to bass.
 
@@ -298,18 +298,18 @@ void SunAndStars() {
 	for(int i = 0; i < 8; i++) {
     // red = green = sun * audio2;
     uint16_t s = sun[i] << 8;
-    s = blip_scale(s, blip_audio2);
+    s = blip_scale(s, blip_bright2);
 		blip_pixels[i].r = blip_pixels[i].g = blip_gamma(s);
 
     // blue = noise^3 * audio1;
     uint16_t b = blip_pow3(blip_noise(phase));
-    b = blip_scale(b, blip_audio1);
+    b = blip_scale(b, blip_bright1);
     blip_pixels[i].b = blip_gamma(b);
     phase += 40503;
 	}		
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Sparks shoot across from the left and split into rainbows.
 
 void RomanCandle() {
@@ -329,7 +329,7 @@ void RomanCandle() {
   }    
 }
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Sparks explode and split into colors. The 'explosion' source slowly moves
 // from side to side as well.
 
@@ -346,7 +346,7 @@ void Fireworks() {
 	{
 		tick1 = 0;
 		cursor--;
-    uint8_t bright = (blip_audio2 >> 8);
+    uint8_t bright = (blip_bright2 >> 8);
 		buffer[cursor] = (bright2 * bright2) >> 8;
 	}
 	
@@ -377,7 +377,7 @@ void Fireworks() {
 }
 */
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // 'Corners' of the mouth light up green with treble, center lights up
 // yellow-white with bass, dim blue background. Good audio visualization.
 
@@ -406,8 +406,8 @@ void CheshireSmile() {
 	};
 
 	for(int i = 0; i < 8; i++) {
-    Color c1 = blip_scale(center[i], blip_audio2);
-    Color c2 = blip_scale(corners[i], blip_audio1);
+    Color c1 = blip_scale(center[i], blip_bright2);
+    Color c2 = blip_scale(corners[i], blip_bright1);
     
     Color c3 = c1 + c2;
     c3.b += 32 * 256;
@@ -418,7 +418,7 @@ void CheshireSmile() {
 	}
 }	
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Glittery rainbow noise.
 
 void Confetti() {
@@ -431,9 +431,9 @@ void Confetti() {
     uint16_t g = blip_noise(phase_g);
     uint16_t b = blip_noise(phase_b);
     
-    r = blip_scale(r, blip_audio1);
-    g = blip_scale(g, blip_audio2);
-    b = blip_scale(b, blip_audio2);
+    r = blip_scale(r, blip_bright1);
+    g = blip_scale(g, blip_bright2);
+    b = blip_scale(b, blip_bright2);
     
     blip_pixels[i].r = blip_gamma(r);
     blip_pixels[i].g = blip_gamma(g);
@@ -445,4 +445,4 @@ void Confetti() {
   }    
 }  
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------

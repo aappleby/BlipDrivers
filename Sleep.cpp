@@ -2,7 +2,6 @@
 
 #include "Config.h"
 #include "LEDDriver.h"
-#include "Bits.h"
 
 #include <avr/interrupt.h>
 #include <avr/io.h>

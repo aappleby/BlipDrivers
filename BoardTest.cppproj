@@ -18,8 +18,7 @@
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
-    <OverrideVtorValue>
-    </OverrideVtorValue>
+    <OverrideVtorValue>exception_table</OverrideVtorValue>
     <eraseonlaunchrule>0</eraseonlaunchrule>
     <AsfVersion>3.1.3</AsfVersion>
     <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
@@ -30,7 +29,7 @@
       <ToolNumber>0000B0040689</ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>31822</port>
+        <port>21451</port>
         <ssl>False</ssl>
       </Channel>
       <ToolOptions>
@@ -38,7 +37,7 @@
         <InterfaceProperties>
           <JtagDbgClock>249000</JtagDbgClock>
           <JtagProgClock>1000000</JtagProgClock>
-          <IspClock>250000</IspClock>
+          <IspClock>1000000</IspClock>
           <JtagInChain>false</JtagInChain>
           <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
           <JtagDevicesBefore>0</JtagDevicesBefore>
@@ -148,9 +147,6 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Bits.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="Bobs.cpp">
       <SubType>compile</SubType>
     </Compile>

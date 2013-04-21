@@ -19,7 +19,7 @@
 #include <util/delay.h>
 #include <stdio.h>
 
-//---------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 typedef void (*pattern_callback)();
 
@@ -47,8 +47,12 @@ pattern_callback patterns[] = {
   */
 };
 
+extern uint8_t blip_bits_green[8];
+
 int main(void)
 {
+  //blip_selftest();
+  
 	blip_setup();
   
   const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
@@ -85,7 +89,7 @@ int main(void)
       
       int16_t offset = blip_ssin(phase2) / 4;
       
-      offset = mul_su16(offset, blip_audio1);
+      offset = mul_su16(offset, blip_bright1);
       
       blip_pixels[i] = blip_scale(peach, blip_sin(phase1 + offset));
       
@@ -99,17 +103,20 @@ int main(void)
     const Color grape = Color::fromHex("5528b2");
     const Color lemon = Color::fromHex("ffff00");
 
-    blip_pixels[0] = blip_scale(pine, blip_audio1);
-    blip_pixels[1] = blip_scale(peach, blip_audio2);
+    blip_pixels[0] = blip_scale(pine, blip_bright1);
+    blip_pixels[1] = blip_scale(peach, blip_bright2);
     blip_pixels[2] = blip_lerp(grape, lemon, blip_sin(blip_tick * 10));
     
-    blip_pixels[3] = blip_smadd(blip_scale(pine, blip_audio1),
-                           blip_scale(grape, blip_audio2));
+    blip_pixels[3] = blip_smadd(blip_scale(pine, blip_bright1),
+                           blip_scale(grape, blip_bright2));
     */
+
+    blip_audio_enable = buttonstate2;
 
     blip_clear();
     patterns[pattern_index]();
 		blip_swap();
+    //blip_bits_green[5] = blip_trigger1;
 	}
 }
 

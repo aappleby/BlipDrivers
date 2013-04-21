@@ -1,12 +1,10 @@
 #include "LEDDriver.h"
-#include "Bits.h"
 
+#include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/pgmspace.h> 
-#include <avr/sleep.h>
 #include <util/delay.h>
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Externally-visible data.
 
 // Back buffer, standard RGB format.
@@ -14,12 +12,6 @@ struct Pixel blip_pixels[8];
 
 // PWM cycle tick, 4.096 kilohertz.
 uint32_t volatile blip_tick;
-
-// Output brightness, channel 1.
-uint8_t bright1 = 0;
-
-// Output brightness, channel 2.
-uint8_t bright2 = 0;
 
 // Button debounce counters
 volatile uint8_t buttonstate1 = 0;
@@ -34,7 +26,7 @@ uint8_t blip_history[512];
 uint8_t* const blip_history1 = &blip_history[0];
 uint8_t* const blip_history2 = &blip_history[256];
 
-//-----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 // Internal data
 
 // Front buffer, bit-planes format.
@@ -45,11 +37,18 @@ uint8_t blip_bits_blue[8];
 // Blanking interval flag.
 volatile uint8_t blip_blank;
 
-// Treble channel trigger value
-uint16_t blip_trigger1;
+// Audio enable flag. If disabled, audio processing will keep using the previous
+// sample.
+uint8_t blip_audio_enable;
 
-// Bass channel trigger value
-uint16_t blip_trigger2;
+// Raw unfiltered ADC sample.
+uint16_t blip_sample;
+
+// Treble channel trigger value.
+uint16_t blip_trigger1 = BLIP_TRIGGER1_MIN;
+
+// Bass channel trigger value.
+uint16_t blip_trigger2 = BLIP_TRIGGER2_MIN;
 
 // Current channel 1 sample, contains mostly treble frequencies.
 uint16_t blip_sample1;
@@ -57,17 +56,17 @@ uint16_t blip_sample1;
 // Current channel 2 sample, contains mostly bass frequencies.
 uint16_t blip_sample2;
 
-// DC filter accumulator
-int16_t blip_dcbias;
+// Microphone DC bias filter accumulator.
+int16_t blip_filter_dc;
 
-// Bass filter accumulator
-int16_t accumB;
+// Bass filter accumulator.
+int16_t blip_filter_bass;
 
 // Brightness cursor, treble channel.
-uint16_t blip_audio1;
+uint16_t blip_bright1;
 
 // Brightness cursor, channel 2.
-uint16_t blip_audio2;
+uint16_t blip_bright2;
 
 // Brightness accumulator, treble channel.
 uint16_t brightaccum1 = 0;
@@ -75,13 +74,10 @@ uint16_t brightaccum1 = 0;
 // Brightness accumulator, channel 2.
 uint16_t brightaccum2 = 0;
 
-// Internal tick count to trigger volume adaptation every 64 cycles.
-uint8_t tickcount = 0;
-
 // PWM callback function pointer dispatched by the timer interrupt.
 void (*timer_callback)() ;
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Timer interrupt, dispatches our LED update callback. Note that we _ijmp_ to
 // the callback, and _reti_ from the callback - this saves a few cycles per
 // interrupt, which ends up being a big win when we're doing 24000 of them per
@@ -120,7 +116,7 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
   asm("ijmp");
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Interrupt handlers
 
 // Each callback needs to fire a precise number of cycles after the previous
@@ -246,13 +242,13 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 	
 	// remove dc bias, part 1
 	{
-		// blip_sample1 -= blip_dcbias;
-		// blip_dcbias += (blip_sample1 >> DCFILTER);
+		// blip_sample1 -= blip_filter_dc;
+		// blip_filter_dc += (blip_sample1 >> DCFILTER);
 
-		asm("lds r28, %0" : : "X" (ADCL) );
-		asm("lds r29, %0" : : "X" (ADCH) );
-		asm("lds r30, blip_dcbias + 0");
-		asm("lds r31, blip_dcbias + 1");
+		asm("lds r28, blip_sample + 0");
+		asm("lds r29, blip_sample + 1");
+		asm("lds r30, blip_filter_dc + 0");
+		asm("lds r31, blip_filter_dc + 1");
 	
 		asm("sub r28, r30");
 		asm("sbc r29, r31");
@@ -277,17 +273,17 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 		asm("add r30, r26");
 		asm("adc r31, r27");
 	
-		asm("sts blip_dcbias + 0, r30");
-		asm("sts blip_dcbias + 1, r31");
+		asm("sts blip_filter_dc + 0, r30");
+		asm("sts blip_filter_dc + 1, r31");
 	}		
 	
 	// split bass and treble
 	{
-		// blip_sample1 -= accumB;
-		// accumB += (blip_sample1 >> BASSFILTER);
+		// blip_sample1 -= blip_filter_bass;
+		// blip_filter_bass += (blip_sample1 >> BASSFILTER);
 	
-		asm("lds r30, accumB + 0");
-		asm("lds r31, accumB + 1");
+		asm("lds r30, blip_filter_bass + 0");
+		asm("lds r31, blip_filter_bass + 1");
 		asm("sub r28, r30");
 		asm("sbc r29, r31");
 	
@@ -299,8 +295,8 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 		asm("add r30, r26");
 		asm("adc r31, r27");
 	
-		asm("sts accumB + 0, r30");
-		asm("sts accumB + 1, r31");
+		asm("sts blip_filter_bass + 0, r30");
+		asm("sts blip_filter_bass + 1, r31");
 	}		
 
 	asm("nop"); asm("nop"); asm("nop"); asm("nop"); 
@@ -313,7 +309,7 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 
 	// normalize blip_sample2
 	{
-		// blip_sample2 = (accumB < 0) ? -accumB : accumB;
+		// blip_sample2 = (blip_filter_bass < 0) ? -blip_filter_bass : blip_filter_bass;
 		asm("sbrc r31, 7");
 		asm("jmp negate_bass");
 		asm("nop");
@@ -346,18 +342,17 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 		asm("sts blip_sample1 + 1, r29");
 	}		
 	
-	// increment audio tick, 5 cycles
-	{
-		// tickcount += 4;
-		asm("lds r30, tickcount");
-		asm("subi r30, 0xFC");
-		asm("sts tickcount, r30");
-	}		
+  asm("nop");
+  asm("nop");
+  asm("nop");
+  asm("nop");
+  asm("nop");
 	
 	// adapt1
 	{
-		asm("lds r30, tickcount");
-		asm("tst r30");
+    // if((blip_tick) & 63 == 0) adapt();
+    asm("lds r30, blip_tick");
+    asm("andi r30, 63");
 		asm("breq trig1_adapt");
     
     // Cycle padding if we're not doing adaptation this period.
@@ -439,7 +434,7 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 	asm("reti");
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Sends red field bit 7 pulse and queues callback for green field.
 
 __attribute__((naked, aligned(4))) void red_field_B() {
@@ -476,7 +471,7 @@ __attribute__((naked, aligned(4))) void red_field_B() {
 	asm("reti");
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Green field A. Pulses and audio.
 
 __attribute__((naked, aligned(4))) void green_field_A() {
@@ -539,8 +534,8 @@ __attribute__((naked, aligned(4))) void green_field_A() {
   // Store the old brightness values in the history buffer. The channel 1 and
   // channel 2 buffers are contiguous in memory, which saves us a few cycles.
   // int cursor = ((blip_tick >> 8) + 1) & 0xFF;
-  // blip_history[cursor] = (blip_audio1 >> 8);
-  // blip_history[cursor + 256] = (blip_audio2 >> 8);
+  // blip_history[cursor] = (blip_bright1 >> 8);
+  // blip_history[cursor + 256] = (blip_bright2 >> 8);
     
   asm("lds r30, blip_tick + 1");
   asm("inc r30");
@@ -548,10 +543,10 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	asm("subi r30, lo8(-(blip_history))");
 	asm("sbci r31, hi8(-(blip_history))");
     
-  asm("lds r25, blip_audio1 + 1");
+  asm("lds r25, blip_bright1 + 1");
   asm("st z, r25");
   asm("inc r31");
-  asm("lds r25, blip_audio2 + 1");
+  asm("lds r25, blip_bright2 + 1");
   asm("st z, r25");
 
 	asm("nop");
@@ -567,19 +562,21 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	// clamp 2, 18 cycles
 	{
 		// if(blip_trigger2 & 0x8000) blip_trigger2 -= 256;
-		// if(blip_trigger2 < TRIG2_CLAMP) blip_trigger2++;
+		// if(blip_trigger2 < BLIP_TRIGGER2_MIN) blip_trigger2++;
 		// 18 cycles
 	
 		asm("lds r30, blip_trigger2 + 0");
 		asm("lds r31, blip_trigger2 + 1");
 
-		// Clamp if above 32767
+		// Our normalized audio sample is in the range (0,32786) - the trigger
+    // should never go over 32768, so we clamp it by subtracting off 256 if
+    // it does.
 		asm("sbrc r31, 7");
 		asm("subi r31, 0x01");
 	
 		// Clamp if below 60
 		asm("clr r29");
-		asm("cpi r30, 60");
+		asm("cpi r30, %0" : : "I"(BLIP_TRIGGER2_MIN));
 		asm("cpc r31, r29");
 		{
 			asm("brge trig2_noclamp");
@@ -600,7 +597,7 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	// clamp 1, 18 cycles
 	{
 		// if(blip_trigger1 & 0x8000) blip_trigger1 -= 256;
-		// if(blip_trigger1 < TRIG1_CLAMP) blip_trigger1++;
+		// if(blip_trigger1 < BLIP_TRIGGER1_MIN) blip_trigger1++;
 		// 18 cycles
 
 		asm("lds r30, blip_trigger1 + 0");
@@ -612,7 +609,7 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	
 		// Clamp if below 60
 		asm("clr r29");
-		asm("cpi r30, 60");
+		asm("cpi r30, %0" : : "I"(BLIP_TRIGGER1_MIN));
 		asm("cpc r31, r29");
 		{
 			asm("brge trig1_noclamp");
@@ -641,8 +638,9 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	
 	// adapt 2
 	{
-		asm("lds r30, tickcount");
-		asm("tst r30");
+    // if((blip_tick) & 63 == 0) adapt();
+    asm("lds r30, blip_tick");
+    asm("andi r30, 63");
 		asm("breq trig2_adapt");
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
@@ -688,9 +686,9 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	// clear brightness accumulators when the tick rolls over.
 	// 14 cycles
 	{
-		// if(tickcount == 0) { brightaccum1 = 0; brightaccum2 = 0; }
-		asm("lds r30, tickcount");
-		asm("tst r30");
+		// if((blip_tick & 63) == 0) { brightaccum1 = 0; brightaccum2 = 0; }
+    asm("lds r30, blip_tick");
+    asm("andi r30, 63");
 		asm("brne noclear");
 		asm("sts brightaccum1 + 0, r30");
 		asm("sts brightaccum1 + 1, r30");
@@ -753,7 +751,7 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	asm("reti");
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Green field B. LED pulse for green bit 7, that's it.
 
 __attribute__((naked, aligned(4))) void green_field_B() {
@@ -790,7 +788,7 @@ __attribute__((naked, aligned(4))) void green_field_B() {
 	asm("reti");
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Blue field A. More LED pulses as above, the last of the audio processing, and
 // button updating go here.
 
@@ -849,7 +847,7 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	
 	// 14 cycles
 	{
-		// uint16_t temp = blip_audio1;
+		// uint16_t temp = blip_bright1;
 		// if(blip_sample1 >= blip_trigger1)
 
 		asm("lds r28, blip_sample1 + 0");
@@ -858,8 +856,8 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 		asm("lds r31, blip_trigger1 + 1");
 		asm("cp r28, r30");
 		asm("cpc r29, r31");
-		asm("lds r28, blip_audio1 + 0");
-		asm("lds r29, blip_audio1 + 1");
+		asm("lds r28, blip_bright1 + 0");
+		asm("lds r29, blip_bright1 + 1");
 	}
 
 	asm("nop"); asm("nop"); asm("nop");
@@ -915,21 +913,22 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	
 	// 4 cycles
 	{
-		// blip_audio1 = temp;
+		// blip_bright1 = temp;
 		asm("store_bright1:");
-		asm("sts blip_audio1 + 0, r28");
-		asm("sts blip_audio1 + 1, r29");
+		asm("sts blip_bright1 + 0, r28");
+		asm("sts blip_bright1 + 1, r29");
 	}
 
 	// 9 cycles
 	{
-		// bright1 = pgm_read_byte(exptab+(blip_audio1 >> 8));
+		// bright1 = pgm_read_byte(exptab+(blip_bright1 >> 8));
 		asm("mov r30, r29");
 		asm("ldi r31, 0x00");
 		asm("subi r30, lo8(-(exptab))");
 		asm("sbci r31, hi8(-(exptab))");
 		asm("lpm r30, Z");
-		asm("sts bright1, r30");
+		asm("nop");
+    asm("nop");
 	}
 
 	// 17 cycles (part 1 of 2, this part is 12 cycles)
@@ -962,7 +961,7 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	
 	// 14 cycles
 	{
-		// uint16_t temp = blip_audio2;
+		// uint16_t temp = blip_bright2;
 		// if(blip_sample2 >= blip_trigger2)
 		asm("lds r28, blip_sample2 + 0");
 		asm("lds r29, blip_sample2 + 1");
@@ -970,8 +969,8 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 		asm("lds r31, blip_trigger2 + 1");
 		asm("cp r28, r30");
 		asm("cpc r29, r31");
-		asm("lds r28, blip_audio2 + 0");
-		asm("lds r29, blip_audio2 + 1");
+		asm("lds r28, blip_bright2 + 0");
+		asm("lds r29, blip_bright2 + 1");
 	}
 
 	// 12 cycles. don't split this block.
@@ -1019,21 +1018,22 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 
 	// 4 cycles
 	{
-		// blip_audio2 = temp;
+		// blip_bright2 = temp;
 		asm("store_bright2:");
-		asm("sts blip_audio2 + 0, r28");
-		asm("sts blip_audio2 + 1, r29");
+		asm("sts blip_bright2 + 0, r28");
+		asm("sts blip_bright2 + 1, r29");
 	}
 	
-	// 9 cycles
+	// 9 cycles, leaves 'bright2' in r30.
 	{
-		// bright2 = pgm_read_byte(exptab+(blip_audio2 >> 8));
+		// bright2 = pgm_read_byte(exptab+(blip_bright2 >> 8));
 		asm("mov r30, r29");
 		asm("ldi r31, 0x00");
 		asm("subi r30, lo8(-(exptab))");
 		asm("sbci r31, hi8(-(exptab))");
 		asm("lpm r30, Z");
-		asm("sts bright2, r30");
+    asm("nop");
+    asm("nop");
 	}
 
 	// 17 cycles
@@ -1093,7 +1093,7 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	asm("reti");
 }	
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Blue field B. Note that this callback is also responsible for triggering the
 // next ADC blip_sample1 conversion, so that it will happen during the relatively
 // 'quiet' period between PWM periods. We also set the 'vblank' flag here so
@@ -1128,10 +1128,25 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
 	asm("ldi r30, 1");
 	asm("sts blip_blank, r30");
   
+  // skip audio sample if audio is disabled (due to the main app needing to
+  // use the ADC to check the battery voltage or something).
+  
+  asm("lds r30, blip_audio_enable");
+  asm("tst r30");
+  asm("breq blip_no_audio");
+  
+  // store the previous ADC sample
+	asm("lds r30, %0" : : "X" (ADCL) );
+	asm("sts blip_sample + 0, r30");
+	asm("lds r30, %0" : : "X" (ADCH) );
+	asm("sts blip_sample + 1, r30");
+  
 	// set ADC start conversion flag
 	asm("lds r30, %0" : : "X" (ADCSRA) );
 	asm("ori r30, %0" : : "X" (bit(ADSC)) );
 	asm("sts %0, r30" : : "X" (ADCSRA) );
+  
+  asm("blip_no_audio:");
 
 	// Restore status register, R31, and R30.
 	asm("pop r30");
@@ -1143,7 +1158,7 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
 	asm("reti");
 }	
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Update button state. 27 cycles + call overhead. Uses r25, r30, r31
 // This is separate from the LED interrupt handlers as we also need to be able
 // to call it from our sleep mode watchdog interrupt.
@@ -1263,7 +1278,7 @@ __attribute__((naked)) void UpdateButtons()
   asm("ret");
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Converts our 8-pixel framebuffer from rgb values to bit planes. If you think
 // of each color channel as being an 8x8 matrix of bits, this is basically a
 // transpose of that matrix.
@@ -1317,7 +1332,12 @@ __attribute__((naked)) void swap4c(uint8_t* vin, uint8_t* vout) {
 	asm("ret");
 }
 
-// The blip_blank flag is set in between PWM periods - 
+//------------------------------------------------------------------------------
+// Synchronize with our PWM interrupt, and then swap framebuffers. The swap is
+// not a simple copy, we actually swizzle the bits in the framebuffer to
+// convert from logical to physical pixel order & from brightness values to bit
+// plane values.
+
 void blip_swap() {
   // Wait for the blanking flag to go from low to high.
 	while(blip_blank);
@@ -1330,13 +1350,18 @@ void blip_swap() {
 	swap4c(&blip_pixels[0].b, blip_bits_blue);
 }
 
+
+//------------------------------------------------------------------------------
 // Swap framebuffers on a multiple of 64 ticks, which synchronizes us at 64 hz.
+
 void blip_swap64() {
   while (blip_tick & 63) {};
   blip_swap();
 }  
 
-// Trivial clear, because GCC is dumb.
+//------------------------------------------------------------------------------
+// Trivial framebuffer clear, because GCC is dumb.
+
 __attribute__((naked)) void blip_clear() {
 	asm("sts blip_pixels +  0, r1"); asm("sts blip_pixels +  1, r1"); asm("sts blip_pixels +  2, r1");
 	asm("sts blip_pixels +  3, r1"); asm("sts blip_pixels +  4, r1"); asm("sts blip_pixels +  5, r1");
@@ -1349,14 +1374,13 @@ __attribute__((naked)) void blip_clear() {
 	asm("ret");
 }
 
-//---------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // Minimalist LED test, just verifies that each LED can be addressed
 // independently.
 
-uint8_t extern const PROGMEM sources[];
-
-void TestLEDs() {
-	// Turn off the serial interface, which the bootloader leaves on by default.
+void blip_selftest() {
+	// Turn off the serial interface, which the Arduino bootloader leaves on
+  // by default.
 	UCSR0B &= ~(1 << RXEN0);
 	UCSR0B &= ~(1 << TXEN0);
 	
@@ -1369,26 +1393,38 @@ void TestLEDs() {
 	while(1)
 	{
     PORTB = SINK_RED;
-    for(int i = 0; i < 8; i++) {
-		  PORTD = pgm_read_byte(sources + i);
-      _delay_ms(300);
-    }
+    PORTD = 1 << PIXEL_0_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_1_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_2_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_3_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_4_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_5_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_6_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_7_TO_PIN; _delay_ms(300);
     
     PORTB = SINK_GREEN;
-    for(int i = 0; i < 8; i++) {
-		  PORTD = pgm_read_byte(sources + i);
-      _delay_ms(300);
-    }
+    PORTD = 1 << PIXEL_0_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_1_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_2_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_3_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_4_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_5_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_6_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_7_TO_PIN; _delay_ms(300);
 
     PORTB = SINK_BLUE;
-    for(int i = 0; i < 8; i++) {
-		  PORTD = pgm_read_byte(sources + i);
-      _delay_ms(300);
-    }
+    PORTD = 1 << PIXEL_0_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_1_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_2_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_3_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_4_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_5_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_6_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_7_TO_PIN; _delay_ms(300);
 	}	
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Turns off every peripheral in the ATMega.
 
 void blip_shutdown() {
@@ -1460,7 +1496,7 @@ void blip_shutdown() {
 	PRR = bit(PRTWI) | bit(PRTIM0) | bit(PRTIM1) | bit(PRTIM2) | bit(PRSPI) | bit(PRUSART0) | bit(PRADC);
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
 // Initial configuration of all peripherals - we set up the LED array, turn on
 // the microphone, enable pull-ups for our buttons, start the ADC, configure our
 // timer interrupts, and kick off the first ADC blip_sample1.
@@ -1471,7 +1507,7 @@ void blip_setup() {
 	
   // Turn absolutely everything off to start with.
 	blip_shutdown();
-	
+  
 	// Port D is our LED source port.	
 	PORTD = 0x00;
 	DDRD = 0xFF;
@@ -1507,9 +1543,28 @@ void blip_setup() {
 		
 	// Device configured, kick off the first ADC conversion and enable
 	// interrupts.
+  blip_audio_enable = 1;
 	sbi(ADCSRA,ADSC);
 
 	sei();
 }
 
-//------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
+
+int blip_button1_held(int ticks) {
+  return ((buttonstate1 == 0) && (debounce_down1 >= ticks)) ? 1 : 0;
+}
+
+int blip_button1_released_after(int ticks) {
+  return ((buttonstate1 == 1) && (debounce_down1 >= ticks)) ? 1 : 0;
+}  
+
+int blip_button2_held(int ticks) {
+  return ((buttonstate2 == 0) && (debounce_down2 >= ticks)) ? 1 : 0;
+}
+
+int blip_button2_released_after(int ticks) {
+  return ((buttonstate2 == 1) && (debounce_down2 >= ticks)) ? 1 : 0;
+}  
+
+//---------------------------------------------------------------------------------

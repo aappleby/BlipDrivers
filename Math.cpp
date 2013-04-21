@@ -414,8 +414,8 @@ __attribute__((naked)) uint16_t lerp_u8_u16(const uint8_t* table, uint16_t x) {
 }
 
 
-// Interpolate between elements in a 256-element, 8-bit table, with wrapping,
-// expanding the table value out to 16 bits.
+// Interpolate between elements in a 256-element, 8-bit table in RAM,
+// with wrapping, expanding the table value out to 16 bits.
 __attribute__((naked)) uint16_t lerp_u8_u16_ram(uint8_t* table, uint16_t x) {
   asm("clr r20");
   asm("clr r21");
