@@ -1111,8 +1111,7 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
 	asm("sts timer_callback, r30");
 	asm("sts timer_callback+1, r31");
 
-	// set next timeout
-	// 6 cycles
+	// Set next interrupt timeout. 6 cycles.
 	asm("ldi r30, %0" : : "M" (lo8(BLUE_FIELD_B_TIMEOUT)) );
 	asm("ldi r31, %0" : : "M" (hi8(BLUE_FIELD_B_TIMEOUT)) );
 	asm("sts %0, r31" : : "X" (TCNT1H));
@@ -1124,18 +1123,23 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
 		asm("out %0, r30" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}		
 	
-	// set blanking flag (3 cycles)
+  // We are now outside the hard-real-time section of the interrupt handler.
+  // Code below this point should still run in a mostly-constant amount of time, but
+  // it does not have to.
+  
+	// We've displayed all the fields for this PWM cycle, signal to the
+  // application that it is now safe to swap frames. (3 cycles)
 	asm("ldi r30, 1");
 	asm("sts blip_blank, r30");
   
-  // skip audio sample if audio is disabled (due to the main app needing to
-  // use the ADC to check the battery voltage or something).
+  // Skip updating the audio sample if audio is disabled due to the main app
+  // needing to use the ADC to check the battery voltage or something.
   
   asm("lds r30, blip_audio_enable");
   asm("tst r30");
   asm("breq blip_no_audio");
   
-  // store the previous ADC sample
+  // Store the previous ADC sample
 	asm("lds r30, %0" : : "X" (ADCL) );
 	asm("sts blip_sample + 0, r30");
 	asm("lds r30, %0" : : "X" (ADCH) );
