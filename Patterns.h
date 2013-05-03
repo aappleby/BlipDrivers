@@ -22,5 +22,7 @@ void Confetti();
 void DancingSapphire();
 void Blackbody();
 void Bliplace1();
+void BouncingBalls();
+void Ocean();
 
 #endif

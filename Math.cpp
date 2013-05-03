@@ -5,69 +5,9 @@
 
 #include <avr/pgmspace.h>
 
-Color Color::fromHue(uint16_t h) {
-  Color c;
-  c.r = blip_hsv_r(h);
-  c.g = blip_hsv_g(h);
-  c.b = blip_hsv_b(h);
-  return c;
-}
-
-Color Color::fromHue(float h) {
-  return fromHue(uint16_t(h * 65536));
-}
-  
-Color Color::fromHue(double h) {
-  return fromHue(uint16_t(float(h) * 65536));
-}
-
-uint8_t hex2dec(char code) {
-  uint8_t x = code - 48;
-  if(x > 9) x -= 7;
-  if(x > 15) x -= 32;
-  return x;
-}  
-
-Color Color::fromHex(const char* code) {
-  uint8_t r, g, b;
-  
-  if (code[3] == 0) {
-    // rgb
-    r = hex2dec(code[0]);
-    g = hex2dec(code[1]);
-    b = hex2dec(code[2]);
-    r |= r << 4;
-    g |= g << 4;
-    b |= b << 4;
-  }
-  else if (code[4] == 0) {
-    // #rgb
-    r = hex2dec(code[1]);
-    g = hex2dec(code[2]);
-    b = hex2dec(code[3]);
-    r |= r << 4;
-    g |= g << 4;
-    b |= b << 4;
-  }    
-  else if(code[0] == '#') {
-    // #rrggbb
-    r = hex2dec(code[1]) * 16 + hex2dec(code[2]);
-    g = hex2dec(code[3]) * 16 + hex2dec(code[4]);
-    b = hex2dec(code[5]) * 16 + hex2dec(code[6]);
-  }
-  else {
-    // rrggbb
-    r = hex2dec(code[0]) * 16 + hex2dec(code[1]);
-    g = hex2dec(code[2]) * 16 + hex2dec(code[3]);
-    b = hex2dec(code[4]) * 16 + hex2dec(code[5]);
-  }
-  return Color(r,g,b);
-}  
-  
-
-
-
+//-----------------------------------------------------------------------------
 // Xorshift RNG, from Wikipedia.
+
 uint32_t xor128(void) {
   static uint32_t x = 123456789;
   static uint32_t y = 362436069;
@@ -80,8 +20,11 @@ uint32_t xor128(void) {
   return w = w ^ (w >> 19) ^ (t ^ (t >> 8));
 }
 
+//-----------------------------------------------------------------------------
+// Fractional multiply functions.
+
 // Multiply two unsigned 16-bit fractions.
-__attribute__((naked)) uint16_t mul_uu16(uint16_t a, uint16_t b) {
+__attribute__((naked)) uint16_t mul_f16(uint16_t a, uint16_t b) {
   asm("clr r26");
   
   // r19:r18 = a
@@ -116,7 +59,7 @@ __attribute__((naked)) uint16_t mul_uu16(uint16_t a, uint16_t b) {
 }
 
 // Multiply two signed 16-bit fractions.
-__attribute__((naked)) int16_t mul_ss16(int16_t a, int16_t b) {
+__attribute__((naked)) int16_t mul_f16(int16_t a, int16_t b) {
   // r26 = 0
   asm("clr r26");
 
@@ -160,7 +103,7 @@ __attribute__((naked)) int16_t mul_ss16(int16_t a, int16_t b) {
 }
 
 // Multiply one signed and one unsigned 16-bit fraction.
-__attribute__((naked)) int16_t mul_su16(int16_t a, uint16_t b) {
+__attribute__((naked)) int16_t mul_f16(int16_t a, uint16_t b) {
   // r26 = 0
   asm("clr r26");
 
@@ -199,7 +142,7 @@ __attribute__((naked)) int16_t mul_su16(int16_t a, uint16_t b) {
 
 
 // Multiply one unsigned and one signed 16-bit fraction.
-__attribute__((naked)) int16_t mul_us16(uint16_t a, int16_t b) {
+__attribute__((naked)) int16_t mul_f16(uint16_t a, int16_t b) {
   // r26 = 0
   asm("clr r26");
 
@@ -235,8 +178,8 @@ __attribute__((naked)) int16_t mul_us16(uint16_t a, int16_t b) {
   asm("ret");
 }
 
-
-
+//-----------------------------------------------------------------------------
+// Interpolate between two values.
 
 // Interpolate between two unsigned 8-bit numbers.
 __attribute__((naked)) uint8_t lerp_u8(uint8_t x1, uint8_t x2, uint8_t t) {
@@ -319,7 +262,11 @@ __attribute__((naked)) uint16_t lerp16_s16(int16_t a, int16_t b, uint8_t t) {
   return lerp_u16(a ^ 0x8000, b ^ 0x8000, t) ^ 0x8000;
 }  
 
-// Interpolate between elements in a 256-element, 8-bit table, with wrapping.
+//-----------------------------------------------------------------------------
+// Interpolated table lookup.
+
+// Interpolate between elements in a 256-element, 8-bit table in flash, with
+// wrapping.
 __attribute__((naked)) uint8_t lerp_u8_u8(const uint8_t* table, uint16_t x) {
   // x1 = x & 0xff; (in r23)
   // t = x >> 8;  (in r22);
@@ -362,8 +309,8 @@ __attribute__((naked)) uint8_t lerp_u8_u8(const uint8_t* table, uint16_t x) {
 }  
 
 
-// Interpolate between elements in a 256-element, 8-bit table, with wrapping,
-// expanding the table value out to 16 bits.
+// Interpolate between elements in a 256-element, 8-bit table in flash, with
+// wrapping, expanding the table value out to 16 bits.
 __attribute__((naked)) uint16_t lerp_u8_u16(const uint8_t* table, uint16_t x) {
   asm("clr r20");
   asm("clr r21");
@@ -660,6 +607,78 @@ uint8_t imagelerp_u8(const uint8_t* image, uint16_t x) {
   return ((b * s) + (a * t) + a) >> 8;
 }
 
+//-----------------------------------------------------------------------------
+// Color class
+
+uint8_t hex2dec(char code) {
+  uint8_t x = code - 48;
+  if(x > 9) x -= 7;
+  if(x > 15) x -= 32;
+  return x;
+}  
+
+Color::Color(const char* hexcode) {
+  uint8_t r, g, b;
+  
+  if (hexcode[3] == 0) {
+    // rgb
+    r = hex2dec(hexcode[0]);
+    g = hex2dec(hexcode[1]);
+    b = hex2dec(hexcode[2]);
+    r |= r << 4;
+    g |= g << 4;
+    b |= b << 4;
+  }
+  else if (hexcode[4] == 0) {
+    // #rgb
+    r = hex2dec(hexcode[1]);
+    g = hex2dec(hexcode[2]);
+    b = hex2dec(hexcode[3]);
+    r |= r << 4;
+    g |= g << 4;
+    b |= b << 4;
+  }    
+  else if(hexcode[0] == '#') {
+    // #rrggbb
+    r = hex2dec(hexcode[1]) * 16 + hex2dec(hexcode[2]);
+    g = hex2dec(hexcode[3]) * 16 + hex2dec(hexcode[4]);
+    b = hex2dec(hexcode[5]) * 16 + hex2dec(hexcode[6]);
+  }
+  else {
+    // rrggbb
+    r = hex2dec(hexcode[0]) * 16 + hex2dec(hexcode[1]);
+    g = hex2dec(hexcode[2]) * 16 + hex2dec(hexcode[3]);
+    b = hex2dec(hexcode[4]) * 16 + hex2dec(hexcode[5]);
+  }
+  
+  this->r = r | r << 8;
+  this->g = g | g << 8;
+  this->b = b | b << 8;
+}  
+
+Color Color::fromHue(uint16_t h) {
+  Color c;
+  c.r = blip_hsv_r(h);
+  c.g = blip_hsv_g(h);
+  c.b = blip_hsv_b(h);
+  return c;
+}
+
+Color Color::fromHue(float h) {
+  return fromHue(uint16_t(h * 65536));
+}
+  
+Color Color::fromHue(double h) {
+  return fromHue(uint16_t(float(h) * 65536));
+}
+
+Color Color::fromHex(const char* code) {
+  return Color(code);
+}  
+
+//-----------------------------------------------------------------------------
+// Bliplace API, scalar functions.
+
 uint16_t blip_sin(uint16_t x) {
   return lerp_u8_u16(sintab, x);
 }
@@ -677,16 +696,16 @@ int16_t blip_scos(uint16_t x) {
 }  
 
 uint16_t blip_scale(uint16_t x, uint16_t s) {
-  return mul_uu16(x, s);
+  return mul_f16(x, s);
 }
 
 int16_t blip_scale(int16_t x, uint16_t s) {
-  return mul_ss16(x, s);
+  return mul_f16(x, s);
 }  
 
 // 'Smooth' add - 
 uint16_t blip_smadd(uint16_t a, uint16_t b) {
-  return a + b - mul_uu16(a, b);
+  return a + b - mul_f16(a, b);
 }  
 
 uint16_t blip_hsv_r(uint16_t h) {
@@ -699,20 +718,6 @@ uint16_t blip_hsv_g(uint16_t h) {
 
 uint16_t blip_hsv_b(uint16_t h) {
   return lerp_u8_u16(huetab, h + 43690);
-}
-
-uint8_t blip_gamma(uint8_t x) {
-  return pgm_read_byte(cielum + x);
-}
-
-// TODO(aappleby): The cie luminosity function is overkill,
-// and interpolating it is doubly overkill. Is x^2 gamma good
-// enough?
-uint8_t blip_gamma(uint16_t x) {
-  //return lerp_u8_u8_nowrap(cielum, x);
-  //return pgm_read_byte(cielum + (x >> 8));
-  uint8_t y = (x >> 8);
-  return (y * y) >> 8;
 }
 
 uint16_t blip_pow2(uint16_t x) {
@@ -752,6 +757,28 @@ uint16_t blip_noise(uint16_t x) {
   return lerp_u8_u16(noise, x);
 }
 
+uint16_t blip_lookup(const uint8_t* table, uint16_t x) {
+  return lerp_u8_u16(table, x);
+}
+
+uint16_t blip_random() {
+  return (uint16_t)xor128();
+}
+
+uint16_t blip_history1(uint16_t x) {
+  uint16_t cursor = blip_tick;
+  cursor -= x;
+  return lerp_u8_u16_ram(blip_history, cursor);
+}
+
+uint16_t blip_history2(uint16_t x) {
+  uint16_t cursor = blip_tick;
+  cursor -= x;
+  return lerp_u8_u16_ram(blip_history + 256, cursor);
+}
+
+//-----------------------------------------------------------------------------
+// Bliplace API, color functions.
 
 Color blip_scale(Color const& c, uint16_t s) {
   return Color(blip_scale(c.r, s),
@@ -782,4 +809,4 @@ Color blip_lerp(Color const& a, Color const& b, uint16_t x) {
   return Color(lerp_u16(a.r, b.r, t),
                lerp_u16(a.g, b.g, t),
                lerp_u16(a.b, b.b, t));
-}  
+}

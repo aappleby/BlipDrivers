@@ -29,7 +29,7 @@
       <ToolNumber>0000B0040689</ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>21451</port>
+        <port>36563</port>
         <ssl>False</ssl>
       </Channel>
       <ToolOptions>
@@ -54,7 +54,7 @@
       </ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>37491</port>
+        <port>36563</port>
         <ssl>False</ssl>
       </Channel>
     </com_atmel_avrdbg_tool_simulator>
@@ -162,10 +162,10 @@
     <Compile Include="image.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="LEDDriver.c">
+    <Compile Include="LEDDriver.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="LEDDriver.h">
+    <Compile Include="LEDDriver2.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.cpp">

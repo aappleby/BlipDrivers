@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-uint8_t add_smooth(uint8_t a, uint8_t b);
-
 class Bob
 {
 public:

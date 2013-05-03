@@ -23,11 +23,13 @@ volatile uint16_t debounce_up2 = 0;
 volatile uint16_t debounce_down2 = 0;
 
 uint8_t blip_history[512];
-uint8_t* const blip_history1 = &blip_history[0];
-uint8_t* const blip_history2 = &blip_history[256];
+
+
 
 //--------------------------------------------------------------------------------
 // Internal data
+
+extern "C" {
 
 // Front buffer, bit-planes format.
 uint8_t blip_bits_red[8];
@@ -528,9 +530,13 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 		asm("lds r25, blip_bits_green + 3");
 		asm("out %0, r25" : : "I"(_SFR_IO_ADDR(PORT_SOURCE)) );
 	}
-  
   // 17 cycle gap.
   
+#ifdef BLIP_NO_HISTORY
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+	asm("nop"); asm("snop"); asm("nop"); asm("nop"); asm("nop");
+#else 
   // Store the old brightness values in the history buffer. The channel 1 and
   // channel 2 buffers are contiguous in memory, which saves us a few cycles.
   // int cursor = ((blip_tick >> 8) + 1) & 0xFF;
@@ -548,6 +554,7 @@ __attribute__((naked, aligned(4))) void green_field_A() {
   asm("inc r31");
   asm("lds r25, blip_bright2 + 1");
   asm("st z, r25");
+#endif
 
 	asm("nop");
   asm("nop");
@@ -1292,7 +1299,9 @@ __attribute__((naked)) void UpdateButtons()
 
 // Permute and transpose an 8x8 matrix of bits.
 
-__attribute__((naked)) void swap4c(uint8_t* vin, uint8_t* vout) {
+__attribute__((naked)) void swap4d(void* vin, uint8_t* vout) {
+  asm("push r0");
+  asm("push r1");
 
 	asm("movw r30, r24");
 	asm("movw r26, r22");
@@ -1302,21 +1311,31 @@ __attribute__((naked)) void swap4c(uint8_t* vin, uint8_t* vout) {
   // constants as we load them. Note the "*3" so that we pick up values from
   // the same color channel.
 
-	asm("ldd r18, z+%0*3" : : "X"(PIN_0_TO_PIXEL));
-	asm("ldd r19, z+%0*3" : : "X"(PIN_1_TO_PIXEL));
-	asm("ldd r20, z+%0*3" : : "X"(PIN_2_TO_PIXEL));
-	asm("ldd r21, z+%0*3" : : "X"(PIN_3_TO_PIXEL));
+	asm("ldd r18, z+%0*6 + 1" : : "X"(PIN_0_TO_PIXEL));
+	asm("ldd r19, z+%0*6 + 1" : : "X"(PIN_1_TO_PIXEL));
+	asm("ldd r20, z+%0*6 + 1" : : "X"(PIN_2_TO_PIXEL));
+	asm("ldd r21, z+%0*6 + 1" : : "X"(PIN_3_TO_PIXEL));
   
-	asm("ldd r22, z+%0*3" : : "X"(PIN_4_TO_PIXEL));
-	asm("ldd r23, z+%0*3" : : "X"(PIN_5_TO_PIXEL));
-	asm("ldd r24, z+%0*3" : : "X"(PIN_6_TO_PIXEL));
-	asm("ldd r25, z+%0*3" : : "X"(PIN_7_TO_PIXEL));
+	asm("ldd r22, z+%0*6 + 1" : : "X"(PIN_4_TO_PIXEL));
+	asm("ldd r23, z+%0*6 + 1" : : "X"(PIN_5_TO_PIXEL));
+	asm("ldd r24, z+%0*6 + 1" : : "X"(PIN_6_TO_PIXEL));
+	asm("ldd r25, z+%0*6 + 1" : : "X"(PIN_7_TO_PIXEL));
+  
+  // Gamma-correct all the values.
+  asm("mul r18, r18"); asm("mov r18, r1");
+  asm("mul r19, r19"); asm("mov r19, r1");
+  asm("mul r20, r20"); asm("mov r20, r1");
+  asm("mul r21, r21"); asm("mov r21, r1");
+  asm("mul r22, r22"); asm("mov r22, r1");
+  asm("mul r23, r23"); asm("mov r23, r1");
+  asm("mul r24, r24"); asm("mov r24, r1");
+  asm("mul r25, r25"); asm("mov r25, r1");
 	
   // Done with r30:r31, they now become our loop counter and
   // bit collector.
 	asm("ldi r30, 8");
 
-	asm("swaploop:");
+	asm("swaploop2:");
   // Skim the low bits off all the temp registers and collect them in R31.
 	asm("lsr r18"); asm("ror r31");
 	asm("lsr r19"); asm("ror r31");
@@ -1332,9 +1351,13 @@ __attribute__((naked)) void swap4c(uint8_t* vin, uint8_t* vout) {
   
   // Repeat 8 times.
 	asm("dec r30");
-	asm("brne swaploop");
+	asm("brne swaploop2");
+
+  asm("pop r1");
+  asm("pop r0");
 	asm("ret");
 }
+
 
 //------------------------------------------------------------------------------
 // Synchronize with our PWM interrupt, and then swap framebuffers. The swap is
@@ -1349,9 +1372,9 @@ void blip_swap() {
   
   // We're now in between periods, convert our framebuffer to bit-plane
   // format and store it in the front buffer.
-	swap4c(&blip_pixels[0].r, blip_bits_red);
-	swap4c(&blip_pixels[0].g, blip_bits_green);
-	swap4c(&blip_pixels[0].b, blip_bits_blue);
+	swap4d(&blip_pixels[0].r, blip_bits_red);
+	swap4d(&blip_pixels[0].g, blip_bits_green);
+	swap4d(&blip_pixels[0].b, blip_bits_blue);
 }
 
 
@@ -1375,6 +1398,14 @@ __attribute__((naked)) void blip_clear() {
 	asm("sts blip_pixels + 15, r1"); asm("sts blip_pixels + 16, r1"); asm("sts blip_pixels + 17, r1");
 	asm("sts blip_pixels + 18, r1"); asm("sts blip_pixels + 19, r1"); asm("sts blip_pixels + 20, r1");
 	asm("sts blip_pixels + 21, r1"); asm("sts blip_pixels + 22, r1"); asm("sts blip_pixels + 23, r1");
+	asm("sts blip_pixels + 24, r1"); asm("sts blip_pixels + 25, r1"); asm("sts blip_pixels + 26, r1");
+	asm("sts blip_pixels + 27, r1"); asm("sts blip_pixels + 28, r1"); asm("sts blip_pixels + 29, r1");
+	asm("sts blip_pixels + 30, r1"); asm("sts blip_pixels + 31, r1"); asm("sts blip_pixels + 32, r1");
+	asm("sts blip_pixels + 33, r1"); asm("sts blip_pixels + 34, r1"); asm("sts blip_pixels + 35, r1");
+	asm("sts blip_pixels + 36, r1"); asm("sts blip_pixels + 37, r1"); asm("sts blip_pixels + 38, r1");
+	asm("sts blip_pixels + 39, r1"); asm("sts blip_pixels + 40, r1"); asm("sts blip_pixels + 41, r1");
+	asm("sts blip_pixels + 42, r1"); asm("sts blip_pixels + 43, r1"); asm("sts blip_pixels + 44, r1");
+	asm("sts blip_pixels + 45, r1"); asm("sts blip_pixels + 46, r1"); asm("sts blip_pixels + 47, r1");
 	asm("ret");
 }
 
@@ -1505,6 +1536,8 @@ void blip_shutdown() {
 // the microphone, enable pull-ups for our buttons, start the ADC, configure our
 // timer interrupts, and kick off the first ADC blip_sample1.
 
+}
+
 void blip_setup() {
   // No firing interrupts while we're configuring things.
 	cli();
@@ -1553,6 +1586,8 @@ void blip_setup() {
 	sei();
 }
 
+extern "C" {
+
 //---------------------------------------------------------------------------------
 
 int blip_button1_held(int ticks) {
@@ -1572,3 +1607,5 @@ int blip_button2_released_after(int ticks) {
 }  
 
 //---------------------------------------------------------------------------------
+
+}; // extern "C"

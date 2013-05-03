@@ -1,6 +1,7 @@
 #include "Sleep.h"
 
 #include "Config.h"
+#include "Math.h"
 #include "LEDDriver.h"
 
 #include <avr/interrupt.h>
@@ -111,7 +112,7 @@ void GoToSleep()
 
 void FadeOutAndSleep()
 {
-  Pixel backup[8];
+  Color backup[8];
   
   uint32_t old_tick = blip_tick;
   for(int i = 0; i < 8; i++)
@@ -121,9 +122,9 @@ void FadeOutAndSleep()
   for(uint16_t i = 0; i < 256; i++) {
     uint8_t f = ((255-i) * (255-i)) >> 8;
     for(int j = 0; j < 8; j++) {
-      blip_pixels[j].r = (backup[j].r * f) >> 8;
-      blip_pixels[j].g = (backup[j].g * f) >> 8;
-      blip_pixels[j].b = (backup[j].b * f) >> 8;
+      blip_pixels[j].r = (backup[j].r >> 8) * f;
+      blip_pixels[j].g = (backup[j].g >> 8) * f;
+      blip_pixels[j].b = (backup[j].b >> 8) * f;
     }
     for(int j = 0; j < 13; j++)
     {
@@ -139,9 +140,9 @@ void FadeOutAndSleep()
     uint8_t f = (i * i) >> 8;
     for(int j = 0; j < 8; j++)
     {
-      blip_pixels[j].r = (backup[j].r * f) >> 8;
-      blip_pixels[j].g = (backup[j].g * f) >> 8;
-      blip_pixels[j].b = (backup[j].b * f) >> 8;
+      blip_pixels[j].r = (backup[j].r >> 8) * f;
+      blip_pixels[j].g = (backup[j].g >> 8) * f;
+      blip_pixels[j].b = (backup[j].b >> 8) * f;
     }
     for(int j = 0; j < 13; j++)
     {

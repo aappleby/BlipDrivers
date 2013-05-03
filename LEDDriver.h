@@ -5,10 +5,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 //--------------------------------------------------------------------------------
 
 #define bit(A)   (1 << A)
@@ -25,6 +21,8 @@ extern "C" {
 // Install the Bliplace LED drivers & interrupts.
 void blip_setup();
 
+extern "C" {
+
 // Run a simple self-test of the LEDs. Loops forever.
 void blip_selftest();
 
@@ -37,18 +35,26 @@ void blip_swap();
 // Swap w/ a fixed refresh rate of 64 hz.
 void blip_swap64();
 
-//--------------------------------------------------------------------------------
-// Our "framebuffer" is a simple array of 8 RGB blip_pixels.
+};
 
+//--------------------------------------------------------------------------------
+// Our "framebuffer" is a simple array of 8 RGB pixels.
+
+extern "C" {
+  
 struct Pixel {
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
+  uint16_t r;
+  uint16_t g;
+  uint16_t b;
 };
 
 extern struct Pixel blip_pixels[8];
 
+};
+
 //--------------------------------------------------------------------------------
+
+extern "C" {
 
 // Audio enable flag. If disabled, audio processing will keep using the previous
 // sample.
@@ -72,8 +78,7 @@ extern volatile uint16_t debounce_down2;
 extern uint16_t blip_trigger1;
 extern uint16_t blip_trigger2;
 
-extern uint8_t* const blip_history1;
-extern uint8_t* const blip_history2;
+extern uint8_t blip_history[512];
 
 // Brightness cursor, channel 1.
 extern uint16_t blip_bright1;
@@ -81,10 +86,8 @@ extern uint16_t blip_bright1;
 // Brightness cursor, channel 2.
 extern uint16_t blip_bright2;
 
-//--------------------------------------------------------------------------------
+};
 
-#ifdef __cplusplus
-}
-#endif
+//--------------------------------------------------------------------------------
 
 #endif
