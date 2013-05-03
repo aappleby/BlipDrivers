@@ -29,8 +29,6 @@ uint8_t blip_history[512];
 //--------------------------------------------------------------------------------
 // Internal data
 
-extern "C" {
-
 // Front buffer, bit-planes format.
 uint8_t blip_bits_red[8];
 uint8_t blip_bits_green[8];
@@ -43,7 +41,7 @@ volatile uint8_t blip_blank;
 // sample.
 uint8_t blip_audio_enable;
 
-// Raw unfiltered ADC sample.
+// Raw unfiltered ADC sample - this includes the microphone's DC bias.
 uint16_t blip_sample;
 
 // Treble channel trigger value.
@@ -71,13 +69,13 @@ uint16_t blip_bright1;
 uint16_t blip_bright2;
 
 // Brightness accumulator, treble channel.
-uint16_t brightaccum1 = 0;
+uint16_t blip_brightaccum1 = 0;
 
 // Brightness accumulator, channel 2.
-uint16_t brightaccum2 = 0;
+uint16_t blip_brightaccum2 = 0;
 
 // PWM callback function pointer dispatched by the timer interrupt.
-void (*timer_callback)() ;
+void (*blip_timer_callback)() ;
 
 //---------------------------------------------------------------------------------
 // Timer interrupt, dispatches our LED update callback. Note that we _ijmp_ to
@@ -106,13 +104,13 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
   // it - we don't always jump directly to the interrupt, sometimes we jump
   // past a few NOPs. Since all interrupts are aligned(4), we don't have to do
   // a carry after the add.
-  asm("lds r30, timer_callback");
+  asm("lds r30, blip_timer_callback");
   asm("andi r31, 3");
   asm("add r30, r31");
 
   // Load the high byte of the interrupt callback now that we're done using
   // r31.
-  asm("lds r31, timer_callback+1");
+  asm("lds r31, blip_timer_callback+1");
 
   // Call interrupt callback
   asm("ijmp");
@@ -155,6 +153,7 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
 // with our audio processing code. Since this is the first callback fired for
 // a PWM period, we also do a small amount of additional bookkeeping.
 
+extern "C" {
 __attribute__((naked, aligned(4))) void red_field_A() {
   // jitter padding
   asm("nop");  
@@ -373,7 +372,7 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 		asm("lsr r28");
 	
 		// Increase trigger if accum >= 4096, otherwise decrease.
-		asm("lds r29, brightaccum1 + 1");
+		asm("lds r29, blip_brightaccum1 + 1");
 		asm("andi r29, 0xF0");
 		asm("breq trig1_down");
 	
@@ -411,8 +410,8 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 	// set next callback, 6 cycles
 	asm("ldi r30, pm_lo8(red_field_B)");
 	asm("ldi r31, pm_hi8(red_field_B)");
-	asm("sts timer_callback, r30");
-	asm("sts timer_callback+1, r31");
+	asm("sts blip_timer_callback, r30");
+	asm("sts blip_timer_callback+1, r31");
 	
 	// set next timeout, 6 cycles
 	asm("ldi r30, %0" : : "M" (lo8(RED_FIELD_A_TIMEOUT)) );
@@ -435,10 +434,12 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 	// Done
 	asm("reti");
 }
+};
 
 //---------------------------------------------------------------------------------
 // Sends red field bit 7 pulse and queues callback for green field.
 
+extern "C" {
 __attribute__((naked, aligned(4))) void red_field_B() {
   // jitter padding
   asm("nop");  
@@ -448,8 +449,8 @@ __attribute__((naked, aligned(4))) void red_field_B() {
 	// set next callback
 	asm("ldi r30, pm_lo8(green_field_A)");
 	asm("ldi r31, pm_hi8(green_field_A)");
-	asm("sts timer_callback, r30");
-	asm("sts timer_callback+1, r31");
+	asm("sts blip_timer_callback, r30");
+	asm("sts blip_timer_callback+1, r31");
 
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(RED_FIELD_B_TIMEOUT)) );
@@ -472,10 +473,12 @@ __attribute__((naked, aligned(4))) void red_field_B() {
 	// Done
 	asm("reti");
 }
+};
 
 //---------------------------------------------------------------------------------
 // Green field A. Pulses and audio.
 
+extern "C" {
 __attribute__((naked, aligned(4))) void green_field_A() {
   // jitter padding
   asm("nop");  
@@ -664,7 +667,7 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 		asm("lsr r28");
 	
 		// Increase trigger if accum >= 4096, otherwise decrease.
-		asm("lds r29, brightaccum2 + 1");
+		asm("lds r29, blip_brightaccum2 + 1");
 		asm("andi r29, 0xF0");
 		asm("breq trig2_down");
 	
@@ -693,14 +696,14 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	// clear brightness accumulators when the tick rolls over.
 	// 14 cycles
 	{
-		// if((blip_tick & 63) == 0) { brightaccum1 = 0; brightaccum2 = 0; }
+		// if((blip_tick & 63) == 0) { blip_brightaccum1 = 0; blip_brightaccum2 = 0; }
     asm("lds r30, blip_tick");
     asm("andi r30, 63");
 		asm("brne noclear");
-		asm("sts brightaccum1 + 0, r30");
-		asm("sts brightaccum1 + 1, r30");
-		asm("sts brightaccum2 + 0, r30");
-		asm("sts brightaccum2 + 1, r30");
+		asm("sts blip_brightaccum1 + 0, r30");
+		asm("sts blip_brightaccum1 + 1, r30");
+		asm("sts blip_brightaccum2 + 0, r30");
+		asm("sts blip_brightaccum2 + 1, r30");
 		asm("rjmp cleardone");
 		asm("noclear:");
 		asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
@@ -728,8 +731,8 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	// set next callback
 	asm("ldi r30, pm_lo8(green_field_B)");
 	asm("ldi r31, pm_hi8(green_field_B)");
-	asm("sts timer_callback, r30");
-	asm("sts timer_callback+1, r31");
+	asm("sts blip_timer_callback, r30");
+	asm("sts blip_timer_callback+1, r31");
 	
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(GREEN_FIELD_A_TIMEOUT)) );
@@ -757,10 +760,12 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	// Done
 	asm("reti");
 }
+}; 
 
 //---------------------------------------------------------------------------------
 // Green field B. LED pulse for green bit 7, that's it.
 
+extern "C" {
 __attribute__((naked, aligned(4))) void green_field_B() {
   // jitter padding
   asm("nop");  
@@ -770,8 +775,8 @@ __attribute__((naked, aligned(4))) void green_field_B() {
 	// set next callback
 	asm("ldi r30, pm_lo8(blue_field_A)");
 	asm("ldi r31, pm_hi8(blue_field_A)");
-	asm("sts timer_callback, r30");
-	asm("sts timer_callback+1, r31");
+	asm("sts blip_timer_callback, r30");
+	asm("sts blip_timer_callback+1, r31");
 
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(GREEN_FIELD_B_TIMEOUT)) );
@@ -794,11 +799,13 @@ __attribute__((naked, aligned(4))) void green_field_B() {
 	// Done
 	asm("reti");
 }
+};
 
 //---------------------------------------------------------------------------------
 // Blue field A. More LED pulses as above, the last of the audio processing, and
 // button updating go here.
 
+extern "C" {
 __attribute__((naked, aligned(4))) void blue_field_A() {
   // jitter padding
   asm("nop");  
@@ -940,14 +947,14 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 
 	// 17 cycles (part 1 of 2, this part is 12 cycles)
 	{
-		// brightaccum1 += pgm_read_byte(gammatab+bright1);
+		// blip_brightaccum1 += pgm_read_byte(gammatab+bright1);
 		asm("ldi r31, 0x00");
 		asm("subi r30, lo8(-(gammatab))");
 		asm("sbci r31, hi8(-(gammatab))");
 		asm("lpm r28, Z");
 		asm("ldi r29, 0x00");
-		asm("lds r30, brightaccum1 + 0");
-		asm("lds r31, brightaccum1 + 1");
+		asm("lds r30, blip_brightaccum1 + 0");
+		asm("lds r31, blip_brightaccum1 + 1");
 		asm("add r30, r28");
 	}
 	
@@ -962,8 +969,8 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	// (part 2 of 2, this part is 5 cycles)
 	{		
 		asm("adc r31, r29");
-		asm("sts brightaccum1 + 0, r30");
-		asm("sts brightaccum1 + 1, r31");
+		asm("sts blip_brightaccum1 + 0, r30");
+		asm("sts blip_brightaccum1 + 1, r31");
 	}
 	
 	// 14 cycles
@@ -1045,18 +1052,18 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 
 	// 17 cycles
 	{
-		// brightaccum2 += pgm_read_byte(gammatab+bright2);
+		// blip_brightaccum2 += pgm_read_byte(gammatab+bright2);
 		asm("ldi r31, 0x00");
 		asm("subi r30, lo8(-(gammatab))");
 		asm("sbci r31, hi8(-(gammatab))");
 		asm("lpm r28, Z");
 		asm("ldi r29, 0x00");
-		asm("lds r30, brightaccum2 + 0");
-		asm("lds r31, brightaccum2 + 1");
+		asm("lds r30, blip_brightaccum2 + 0");
+		asm("lds r31, blip_brightaccum2 + 1");
 		asm("add r30, r28");
 		asm("adc r31, r29");
-		asm("sts brightaccum2 + 0, r30");
-		asm("sts brightaccum2 + 1, r31");
+		asm("sts blip_brightaccum2 + 0, r30");
+		asm("sts blip_brightaccum2 + 1, r31");
 	}
 
 	// restore temp registers
@@ -1068,8 +1075,8 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	// set next callback
 	asm("ldi r30, pm_lo8(blue_field_B)");
 	asm("ldi r31, pm_hi8(blue_field_B)");
-	asm("sts timer_callback, r30");
-	asm("sts timer_callback+1, r31");
+	asm("sts blip_timer_callback, r30");
+	asm("sts blip_timer_callback+1, r31");
 	
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(BLUE_FIELD_A_TIMEOUT)) );
@@ -1099,13 +1106,15 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	// Done
 	asm("reti");
 }	
-
+};
+  
 //---------------------------------------------------------------------------------
 // Blue field B. Note that this callback is also responsible for triggering the
 // next ADC blip_sample1 conversion, so that it will happen during the relatively
 // 'quiet' period between PWM periods. We also set the 'vblank' flag here so
 // that clients that care about synchronizing with the PWM frequency can do so.
 
+extern "C" {
 __attribute__((naked, aligned(4))) void blue_field_B() {
   // jitter padding
   asm("nop");
@@ -1115,8 +1124,8 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
 	// set next callback
 	asm("ldi r30, pm_lo8(red_field_A)");
 	asm("ldi r31, pm_hi8(red_field_A)");
-	asm("sts timer_callback, r30");
-	asm("sts timer_callback+1, r31");
+	asm("sts blip_timer_callback, r30");
+	asm("sts blip_timer_callback+1, r31");
 
 	// Set next interrupt timeout. 6 cycles.
 	asm("ldi r30, %0" : : "M" (lo8(BLUE_FIELD_B_TIMEOUT)) );
@@ -1167,13 +1176,15 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
 
 	// Done
 	asm("reti");
-}	
+}
+};
 
 //---------------------------------------------------------------------------------
 // Update button state. 27 cycles + call overhead. Uses r25, r30, r31
 // This is separate from the LED interrupt handlers as we also need to be able
 // to call it from our sleep mode watchdog interrupt.
 
+extern "C" {
 __attribute__((naked)) void UpdateButtons()
 {
   asm("lds r25, buttonstate1");
@@ -1288,6 +1299,7 @@ __attribute__((naked)) void UpdateButtons()
 
   asm("ret");
 }
+};
 
 //---------------------------------------------------------------------------------
 // Converts our 8-pixel framebuffer from rgb values to bit planes. If you think
@@ -1357,7 +1369,6 @@ __attribute__((naked)) void swap4d(void* vin, uint8_t* vout) {
   asm("pop r0");
 	asm("ret");
 }
-
 
 //------------------------------------------------------------------------------
 // Synchronize with our PWM interrupt, and then swap framebuffers. The swap is
@@ -1536,8 +1547,6 @@ void blip_shutdown() {
 // the microphone, enable pull-ups for our buttons, start the ADC, configure our
 // timer interrupts, and kick off the first ADC blip_sample1.
 
-}
-
 void blip_setup() {
   // No firing interrupts while we're configuring things.
 	cli();
@@ -1576,7 +1585,7 @@ void blip_setup() {
 
   // The first callback that our timer interrupt will fire is for the first
   // half of the red field.
-	timer_callback = red_field_A;
+	blip_timer_callback = red_field_A;
 		
 	// Device configured, kick off the first ADC conversion and enable
 	// interrupts.
@@ -1585,8 +1594,6 @@ void blip_setup() {
 
 	sei();
 }
-
-extern "C" {
 
 //---------------------------------------------------------------------------------
 
@@ -1607,5 +1614,3 @@ int blip_button2_released_after(int ticks) {
 }  
 
 //---------------------------------------------------------------------------------
-
-}; // extern "C"

@@ -10,18 +10,17 @@
 #include <avr/sleep.h>
 #include <util/delay.h>
 
+void blip_shutdown();
+
 extern "C"
 {
-  void blip_shutdown();
   void UpdateButtons();
 };
 
 extern const uint8_t sintab[] PROGMEM;
 
-// watchdog interrupt has to exist or the chip resets.
-ISR(WDT_vect) {
-//  PORTD = 0x02;
-}
+// The watchdog interrupt handler has to exist or the chip resets.
+ISR(WDT_vect) {}
 
 // We want the breathing LED effect to go back and forth across the LEDs. This table
 // maps which logical LED we want to make breathe to the physical pin we need to turn
@@ -87,16 +86,17 @@ void GoToSleep()
     }
 
     // Otherwise send a tiny pulse of light out through one of the green LEDs.
-    // The length of the pulse is determined by the contents of the gamma-corrected
-    // sine wave table, which gives us a nice breathing effect.
+    // The length of the pulse is determined by the contents of the sine wave
+    // table, which gives us a nice breathing effect.
     uint8_t bright = pgm_read_byte(sintab + uint8_t(sin_cursor - 64));
     // Gamma-correct the sine wave and reduce its brightness to 25%.
     bright = (bright * bright) >> 8;
     bright = bright >> 2;
     
+    // If the brightness is greater than zero, turn one green pixel on for a
+    // time proportional to the brightness.
     if(bright)
     {
-      // Turn one green pixel on for a time proportional to the brightness.
       PORTD = pgm_read_byte(sources + led_cursor);
       while(bright--) asm("nop");
       PORTD = 0;

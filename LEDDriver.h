@@ -21,8 +21,6 @@
 // Install the Bliplace LED drivers & interrupts.
 void blip_setup();
 
-extern "C" {
-
 // Run a simple self-test of the LEDs. Loops forever.
 void blip_selftest();
 
@@ -35,13 +33,9 @@ void blip_swap();
 // Swap w/ a fixed refresh rate of 64 hz.
 void blip_swap64();
 
-};
-
 //--------------------------------------------------------------------------------
 // Our "framebuffer" is a simple array of 8 RGB pixels.
 
-extern "C" {
-  
 struct Pixel {
   uint16_t r;
   uint16_t g;
@@ -50,11 +44,7 @@ struct Pixel {
 
 extern struct Pixel blip_pixels[8];
 
-};
-
 //--------------------------------------------------------------------------------
-
-extern "C" {
 
 // Audio enable flag. If disabled, audio processing will keep using the previous
 // sample.
@@ -85,8 +75,6 @@ extern uint16_t blip_bright1;
 
 // Brightness cursor, channel 2.
 extern uint16_t blip_bright2;
-
-};
 
 //--------------------------------------------------------------------------------
 

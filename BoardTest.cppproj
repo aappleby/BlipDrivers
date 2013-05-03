@@ -162,10 +162,10 @@
     <Compile Include="image.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="LEDDriver.h">
+    <Compile Include="LEDDriver.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="LEDDriver2.cpp">
+    <Compile Include="LEDDriver.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.cpp">

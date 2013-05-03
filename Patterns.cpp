@@ -354,7 +354,7 @@ void BouncingBalls() {
 
 void Ocean() {
   const Color darkblue("#006");
-  const Color darkteal("#064");
+  const Color darkteal("#042");
   const Color skyblue("#8CF");
 
   // Change the time value to change the speed of the waves.
@@ -363,7 +363,7 @@ void Ocean() {
   for (int i = 0; i < 8; i++) {
     // Use the noise function to make dark blue and teal waves.
     Color bluewave = blip_scale(darkblue, blip_noise(time + i * 130));
-    Color tealwave = blip_scale(darkteal, blip_noise(time + i * 150 + 10000));
+    Color tealwave = blip_scale(darkteal, blip_noise(time - i * 150 + 10000));
     
     // Add the two waves together.
     Color waves = blip_smadd(bluewave, tealwave);
