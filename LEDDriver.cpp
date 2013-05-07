@@ -2,13 +2,16 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
+#include <avr/pgmspace.h>
+#include <avr/sleep.h>
+
+//#include <util/delay.h>
 
 //--------------------------------------------------------------------------------
 // Externally-visible data.
 
 // Back buffer, standard RGB format.
-struct Pixel blip_pixels[8];
+Color blip_pixels[8];
 
 // PWM cycle tick, 4.096 kilohertz.
 uint32_t volatile blip_tick;
@@ -1424,6 +1427,16 @@ __attribute__((naked)) void blip_clear() {
 // Minimalist LED test, just verifies that each LED can be addressed
 // independently.
 
+void delayblah() {
+  volatile uint8_t x = 1;
+  for (int i = 0; i < 30000; i++) {
+    x *= 123;
+    x ^= x >> 4;
+    x *= 123;
+    x ^= x >> 4;
+  }    
+}  
+
 void blip_selftest() {
 	// Turn off the serial interface, which the Arduino bootloader leaves on
   // by default.
@@ -1439,34 +1452,34 @@ void blip_selftest() {
 	while(1)
 	{
     PORTB = SINK_RED;
-    PORTD = 1 << PIXEL_0_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_1_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_2_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_3_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_4_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_5_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_6_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_7_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_0_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_1_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_2_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_3_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_4_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_5_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_6_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_7_TO_PIN; delayblah();
     
     PORTB = SINK_GREEN;
-    PORTD = 1 << PIXEL_0_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_1_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_2_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_3_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_4_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_5_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_6_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_7_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_0_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_1_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_2_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_3_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_4_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_5_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_6_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_7_TO_PIN; delayblah();
 
     PORTB = SINK_BLUE;
-    PORTD = 1 << PIXEL_0_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_1_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_2_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_3_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_4_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_5_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_6_TO_PIN; _delay_ms(300);
-    PORTD = 1 << PIXEL_7_TO_PIN; _delay_ms(300);
+    PORTD = 1 << PIXEL_0_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_1_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_2_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_3_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_4_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_5_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_6_TO_PIN; delayblah();
+    PORTD = 1 << PIXEL_7_TO_PIN; delayblah();
 	}	
 }
 
@@ -1596,20 +1609,122 @@ void blip_setup() {
 }
 
 //---------------------------------------------------------------------------------
+// Sleep mode support.
 
-int blip_button1_held(int ticks) {
+// The watchdog interrupt handler has to exist or the chip resets.
+ISR(WDT_vect) {}
+
+// We want the breathing LED effect to go back and forth across the LEDs. This table
+// maps which logical LED we want to make breathe to the physical pin we need to turn
+// on for that LED.
+uint8_t extern const PROGMEM sources[]  =
+{
+  1 << PIXEL_0_TO_PIN,
+  1 << PIXEL_1_TO_PIN,
+  1 << PIXEL_2_TO_PIN,
+  1 << PIXEL_3_TO_PIN,
+  1 << PIXEL_4_TO_PIN,
+  1 << PIXEL_5_TO_PIN,
+  1 << PIXEL_6_TO_PIN,
+  1 << PIXEL_7_TO_PIN,
+  1 << PIXEL_6_TO_PIN,
+  1 << PIXEL_5_TO_PIN,
+  1 << PIXEL_4_TO_PIN,
+  1 << PIXEL_3_TO_PIN,
+  1 << PIXEL_2_TO_PIN,
+  1 << PIXEL_1_TO_PIN,
+  1 << PIXEL_0_TO_PIN,
+};
+
+extern const uint8_t sintab[] PROGMEM;
+
+void blip_sleep()
+{
+  // Turn off all peripherals and disable brownout detection during sleep mode.
+  blip_shutdown();
+  sleep_bod_disable();
+  
+  sei();
+
+  // Turn on the watchdog timer.
+  SMCR = bit(SE) | bit(SM1);
+  WDTCSR = bit(WDCE) | bit(WDE);
+  WDTCSR = bit(WDIE);
+
+  // Set the LED array up to display only the green channel.
+  DDRD = 0xFF;
+  PORTD = 0x00;
+  DDRB = 0xFF;
+  PORTB = SINK_GREEN;
+  
+  uint8_t sin_cursor = 128;
+  uint8_t led_cursor = 0;
+  uint8_t button_counter = 0;
+
+  // Sleep forever (or until the user presses a button).
+  while(1)
+  {
+    // Go to sleep. After 16 milliseconds the watchdog timer will wake us up.
+    asm("sleep");
+    
+    // When we wake up, update our buttons.
+    button_counter++;
+    if (PINC & (1 << BUTTON1_PIN)) {
+      button_counter = 0;
+    }      
+    
+    // If button 1 has been pressed for 7 ticks (~1/8 second), turn off the watchdog
+    // timer and leave sleep mode.
+    if(button_counter == 7)
+    {
+      SMCR = 0;
+      WDTCSR = bit(WDCE) | bit(WDE);
+      WDTCSR = 0;
+      blip_setup();
+      return;
+    }
+
+    // Otherwise send a tiny pulse of light out through one of the green LEDs.
+    // The length of the pulse is determined by the contents of the sine wave
+    // table, which gives us a nice breathing effect.
+    uint8_t bright = pgm_read_byte(sintab + uint8_t(sin_cursor - 64));
+    // Gamma-correct the sine wave and reduce its brightness to 25%.
+    bright = (bright * bright) >> 8;
+    bright = bright >> 2;
+    
+    // If the brightness is greater than zero, turn one green pixel on for a
+    // time proportional to the brightness.
+    if(bright)
+    {
+      PORTD = pgm_read_byte(sources + led_cursor);
+      while(bright--) asm("nop");
+      PORTD = 0;
+    }
+    
+    // Once we've finished a full breathing cycle, step to the next LED.
+    sin_cursor++;
+    if(sin_cursor == 0) {
+      led_cursor++;
+      if (led_cursor == 13) led_cursor = 0;
+    }      
+  }
+}
+
+//---------------------------------------------------------------------------------
+
+int blip_button1_held(uint16_t ticks) {
   return ((buttonstate1 == 0) && (debounce_down1 >= ticks)) ? 1 : 0;
 }
 
-int blip_button1_released_after(int ticks) {
+int blip_button1_released_after(uint16_t ticks) {
   return ((buttonstate1 == 1) && (debounce_down1 >= ticks)) ? 1 : 0;
 }  
 
-int blip_button2_held(int ticks) {
+int blip_button2_held(uint16_t ticks) {
   return ((buttonstate2 == 0) && (debounce_down2 >= ticks)) ? 1 : 0;
 }
 
-int blip_button2_released_after(int ticks) {
+int blip_button2_released_after(uint16_t ticks) {
   return ((buttonstate2 == 1) && (debounce_down2 >= ticks)) ? 1 : 0;
 }  
 

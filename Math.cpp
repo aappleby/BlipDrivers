@@ -1,4 +1,4 @@
-#include "Math.h"
+#include "LEDDriver.h"
 #include "Tables.h"
 
 #include <stdint.h>
@@ -56,6 +56,9 @@ __attribute__((naked)) uint16_t mul_f16(uint16_t a, uint16_t b) {
   
   asm("clr r1");
   asm("ret");
+  
+  // Dummy return
+  return 0;
 }
 
 // Multiply two signed 16-bit fractions.
@@ -100,6 +103,9 @@ __attribute__((naked)) int16_t mul_f16(int16_t a, int16_t b) {
   
   asm("clr r1");
   asm("ret");
+  
+  // Dummy return;
+  return 0;
 }
 
 // Multiply one signed and one unsigned 16-bit fraction.
@@ -138,6 +144,9 @@ __attribute__((naked)) int16_t mul_f16(int16_t a, uint16_t b) {
 
   asm("clr r1");
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }  
 
 
@@ -176,6 +185,9 @@ __attribute__((naked)) int16_t mul_f16(uint16_t a, int16_t b) {
   
   asm("clr r1");
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -206,6 +218,9 @@ __attribute__((naked)) uint8_t lerp_u8(uint8_t x1, uint8_t x2, uint8_t t) {
   asm("adc r24, r1");
 
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }  
 
 // Interpolate between two signed 8-bit numbers.
@@ -255,6 +270,9 @@ __attribute__((naked)) uint16_t lerp_u16(uint16_t x1, uint16_t x2, uint8_t t) {
   
   asm("clr r1");
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }
 
 // Interpolate between two signed 16-bit numbers.
@@ -306,7 +324,10 @@ __attribute__((naked)) uint8_t lerp_u8_u8(const uint8_t* table, uint16_t x) {
   asm("adc r24, r1");
   
   asm("ret");
-}  
+
+  // Dummy return;
+  return 0;
+}
 
 
 // Interpolate between elements in a 256-element, 8-bit table in flash, with
@@ -358,6 +379,9 @@ __attribute__((naked)) uint16_t lerp_u8_u16(const uint8_t* table, uint16_t x) {
   
   asm("clr r1");
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }
 
 
@@ -410,6 +434,9 @@ __attribute__((naked)) uint16_t lerp_u8_u16_ram(uint8_t* table, uint16_t x) {
   
   asm("clr r1");
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }
 
 // Interpolate between elements in a 256-element, signed 8-bit table, with wrapping,
@@ -478,6 +505,9 @@ __attribute__((naked)) int16_t lerp_s8_s16(const int8_t* table, uint16_t x) {
   
   asm("clr r1");
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }
 
 
@@ -528,6 +558,9 @@ __attribute__((naked)) uint16_t lerp_u8_u16_nowrap(const uint8_t* table, uint16_
   
   asm("clr r1");
   asm("ret");
+
+  // Dummy return;
+  return 0;
 }
 
 
@@ -590,22 +623,10 @@ __attribute__((naked)) uint16_t lerp_u16_u16_nowrap(const uint16_t* table, uint1
   
   asm("clr r1");
   asm("ret");
-}  
 
-// Interpolate between two values in an 8-bit array that are 24 bytes apart
-uint8_t imagelerp_u8(const uint8_t* image, uint16_t x) {
-  uint8_t s = x;
-  uint8_t t = ~s;
-  
-  uint8_t x1 = x >> 8;
-  
-  const uint8_t* p = image + (x1 * 24);
-  uint16_t a = pgm_read_byte(p);
-  p += 24;
-  uint16_t b = pgm_read_byte(p);
-  
-  return ((b * s) + (a * t) + a) >> 8;
-}
+  // Dummy return;
+  return 0;
+}  
 
 //-----------------------------------------------------------------------------
 // Color class
@@ -615,9 +636,47 @@ uint8_t hex2dec(char code) {
   if(x > 9) x -= 7;
   if(x > 15) x -= 32;
   return x;
+}
+
+Color Color::fromRGB(uint16_t r, uint16_t g, uint16_t b) {
+  Color result = { r, g, b };
+  return result;
 }  
 
-Color::Color(const char* hexcode) {
+Color Color::fromRGB(int r, int g, int b)
+{
+  Color result = { uint16_t(r), uint16_t(g), uint16_t(b) };
+  return result;
+}
+
+Color Color::fromRGB(uint8_t r, uint8_t g, uint8_t b) {
+  Color result = {
+    uint16_t(r | r << 8),
+    uint16_t(g | g << 8),
+    uint16_t(b | b << 8)
+  };
+  return result;
+}
+
+Color Color::fromRGB(float r, float g, float b) {
+  Color result = {
+    uint16_t(r * 65535),
+    uint16_t(g * 65535),
+    uint16_t(b * 65535)
+  };
+  return result;
+}  
+
+Color Color::fromHue(uint16_t h) {
+  Color result = {
+    blip_hsv_r(h),
+    blip_hsv_g(h),
+    blip_hsv_b(h)
+  };
+  return result;
+}
+
+Color Color::fromHex(const char* hexcode) {
   uint8_t r, g, b;
   
   if (hexcode[3] == 0) {
@@ -651,30 +710,13 @@ Color::Color(const char* hexcode) {
     b = hex2dec(hexcode[4]) * 16 + hex2dec(hexcode[5]);
   }
   
-  this->r = r | r << 8;
-  this->g = g | g << 8;
-  this->b = b | b << 8;
-}  
-
-Color Color::fromHue(uint16_t h) {
-  Color c;
-  c.r = blip_hsv_r(h);
-  c.g = blip_hsv_g(h);
-  c.b = blip_hsv_b(h);
-  return c;
+  Color result = {
+    uint16_t(r | r << 8),
+    uint16_t(g | g << 8),
+    uint16_t(b | b << 8)
+  };
+  return result;
 }
-
-Color Color::fromHue(float h) {
-  return fromHue(uint16_t(h * 65536));
-}
-  
-Color Color::fromHue(double h) {
-  return fromHue(uint16_t(float(h) * 65536));
-}
-
-Color Color::fromHex(const char* code) {
-  return Color(code);
-}  
 
 //-----------------------------------------------------------------------------
 // Bliplace API, scalar functions.
@@ -701,9 +743,9 @@ uint16_t blip_scale(uint16_t x, uint16_t s) {
 
 int16_t blip_scale(int16_t x, uint16_t s) {
   return mul_f16(x, s);
-}  
+}
 
-// 'Smooth' add - 
+// 'Smooth' add - doesn't overflow.
 uint16_t blip_smadd(uint16_t a, uint16_t b) {
   return a + b - mul_f16(a, b);
 }  
@@ -781,32 +823,50 @@ uint16_t blip_history2(uint16_t x) {
 // Bliplace API, color functions.
 
 Color blip_scale(Color const& c, uint16_t s) {
-  return Color(blip_scale(c.r, s),
-               blip_scale(c.g, s),
-               blip_scale(c.b, s));
+  Color result = {
+    blip_scale(c.r, s),
+    blip_scale(c.g, s),
+    blip_scale(c.b, s)
+  };
+  return result;
 }
 
 
 Color blip_scale(Color const& c, uint16_t s1, uint16_t s2) {
-  return Color(blip_scale(blip_scale(c.r, s1), s2),
-               blip_scale(blip_scale(c.g, s1), s2),
-               blip_scale(blip_scale(c.b, s1), s2));
+  Color result = {
+    blip_scale(blip_scale(c.r, s1), s2),
+    blip_scale(blip_scale(c.g, s1), s2),
+    blip_scale(blip_scale(c.b, s1), s2)
+  };
+  return result;
 }
 
-
-Color operator + (Color const& a, Color const& b) {
-  return Color(a.r + b.r, a.g + b.g, a.b + b.b);
+Color blip_add(Color const& a, Color const& b) {
+  Color result = {
+    a.r + b.r,
+    a.g + b.g,
+    a.b + b.b
+  };
+  return result;
 }
 
 Color blip_smadd(Color const& a, Color const& b) {
-  return Color(blip_smadd(a.r, b.r),
-               blip_smadd(a.g, b.g),
-               blip_smadd(a.b, b.b));
+  Color result = {
+    blip_smadd(a.r, b.r),
+    blip_smadd(a.g, b.g),
+    blip_smadd(a.b, b.b)
+  };
+  return result;
 }
 
 Color blip_lerp(Color const& a, Color const& b, uint16_t x) {
   uint8_t t = x >> 8;
-  return Color(lerp_u16(a.r, b.r, t),
-               lerp_u16(a.g, b.g, t),
-               lerp_u16(a.b, b.b, t));
+  Color result = {
+    lerp_u16(a.r, b.r, t),
+    lerp_u16(a.g, b.g, t),
+    lerp_u16(a.b, b.b, t)
+  };
+  return result;
 }
+
+//-----------------------------------------------------------------------------

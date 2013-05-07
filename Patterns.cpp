@@ -1,12 +1,8 @@
 #include "Patterns.h"
 #include "Tables.h"
 #include "LEDDriver.h"
-#include "Math.h"
 
 #include <avr/pgmspace.h>
-#include <math.h>
-
-Color* blip_cpixels = (Color*)blip_pixels;
 
 //--------------------------------------------------------------------------------
 // Tests button functionality.
@@ -29,8 +25,7 @@ void button_test() {
 void red_test() {
 	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
-    uint16_t r = blip_sin(phase);
-		blip_pixels[i].r = r;
+		blip_pixels[i].r = blip_sin(phase);
     phase += 8000;
 	}
 }	
@@ -41,8 +36,7 @@ void red_test() {
 void green_test() {
 	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
-    uint16_t g = blip_sin(phase);
-		blip_pixels[i].g = g;
+		blip_pixels[i].g = blip_sin(phase);
     phase += 8000;
 	}
 }
@@ -53,8 +47,7 @@ void green_test() {
 void blue_test() {
 	uint16_t phase = blip_tick * 16;
 	for(int i = 0; i < 8; i++) {
-    uint16_t b = blip_sin(phase);
-		blip_pixels[i].b = b;
+		blip_pixels[i].b = blip_sin(phase);
     phase += 8000;
 	}
 }
@@ -353,9 +346,9 @@ void BouncingBalls() {
 // Slow blue-green waves that pulse subtly.
 
 void Ocean() {
-  const Color darkblue("#006");
-  const Color darkteal("#042");
-  const Color skyblue("#8CF");
+  const Color darkblue = Color::fromHex("#006");
+  const Color darkteal = Color::fromHex("#063");
+  const Color skyblue = Color::fromHex("#8CF");
 
   // Change the time value to change the speed of the waves.
   uint16_t time = blip_tick / 8;
@@ -373,7 +366,7 @@ void Ocean() {
     
     // Blend between the waves and the glow based on the audio, but not all the
     // way so that we can still see some waves.
-    blip_cpixels[i] = blip_lerp(waves, glow, blip_bright1 * 0.7);
+    blip_pixels[i] = blip_lerp(waves, glow, blip_bright1 * 0.7);
   }
 }  
 
@@ -431,7 +424,7 @@ void Fireworks() {
 
 void CheshireSmile() {
 
-	Pixel center[8] = {
+	Color center[8] = {
 		{  1000,     0,    0 },
 		{ 12000,  1000,    0 },
 		{ 40000, 17000,    0 },
@@ -442,7 +435,7 @@ void CheshireSmile() {
 		{  1000,     0,    0 },
 	};
 
-	Pixel corners[8] = {
+	Color corners[8] = {
 		{   0, 32000, 0 },
 		{   0, 16000, 0 },
 		{   0,  8000, 0 },
@@ -457,7 +450,7 @@ void CheshireSmile() {
     Color c1 = blip_scale(center[i], blip_bright2);
     Color c2 = blip_scale(corners[i], blip_bright1);
     
-    Color c3 = c1 + c2;
+    Color c3 = blip_add(c1, c2);
     c3.b += 32 * 256;
     
     blip_pixels[i].r = c3.r;

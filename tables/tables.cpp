@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
+#include <memory.h>
 
 typedef unsigned char uint8_t;
 typedef signed char int8_t;
@@ -217,9 +218,25 @@ void ssintab() {
 
 int main(int argc, char** argv)
 {
-  ssintab();
-  printf("\n");
+  uint8_t present[256];
+  memset(present, 0, 256);
 
-	return 0;
+  for(uint16_t i = 0; i < 256; i++) {
+    uint16_t x = i;
+    x *= 97;
+    x = (x ^ x >> 8) & 0xFF;
+    x++;
+    x *= 113;
+    x = (x ^ x >> 8) & 0xFF;
+    printf("%d\n", x);
+    present[i] = 1;
+  }
+  int count = 0;
+  for (int i = 0; i < 256; i++) count += present[i];
+  printf("%d\n", count);
+  //ssintab();
+  //printf("\n");
+
+  return 0;
 }
 

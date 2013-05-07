@@ -1,23 +1,8 @@
 #include "Patterns.h"
 #include "LEDDriver.h"
-#include "Bobs.h"
-#include "Sleep.h"
 #include "Tables.h"
-#include "Math.h"
-
-#include <math.h>
-#include <stdio.h>
-#include <stdfix.h>
-
-#include <avr/wdt.h>
 
 #define F_CPU 8000000
-
-#include <avr/interrupt.h>
-#include <avr/io.h>
-#include <avr/pgmspace.h>
-#include <util/delay.h>
-#include <stdio.h>
 
 //------------------------------------------------------------------------------
 
@@ -25,13 +10,16 @@ typedef void (*pattern_callback)();
 
 int pattern_index = 0;
 
+void SleepPattern();
+
 pattern_callback patterns[] = {
   Ocean,
+  SleepPattern,
+	CheshireSmile,
   BouncingBalls,
 	RomanCandle,
 	SlowColorCycle,
 	AudioMeter,
-	CheshireSmile,
   Confetti,
 	SunAndStars,
 	DancingSapphire,
@@ -47,6 +35,27 @@ pattern_callback patterns[] = {
 	blue_test,
 };
 
+const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
+
+void SleepPattern() {
+  // Clear the screen.
+  blip_clear();
+  blip_swap();
+  
+  // Go to sleep.
+  blip_sleep();
+  
+  // When we wake up, advance to the next pattern so we don't just go back
+  // to sleep again.
+  pattern_index++;
+  if (pattern_index == pattern_count) pattern_index = 0;
+  
+  // Wait for the button to be released so the main loop doesn't respond to
+  // the wake-up button press.
+  while(buttonstate1 == 0);
+  debounce_down1 = 0;
+}
+
 extern uint8_t blip_bits_green[8];
 
 const Color grape = Color::fromHex("421C52");
@@ -61,29 +70,15 @@ int main(void)
   
 	blip_setup();
   
-  const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
   
 	while(1) {
-    UpdateSleep();
     
     if((buttonstate1 == 1) && (debounce_down1 > 256)) {
-      pattern_index = (pattern_index + 1) % pattern_count;
+      pattern_index++;
+      if (pattern_index == pattern_count) pattern_index = 0;
       debounce_down1 = 0;
     }
-    
-    /*
-		blip_clear();
 
-    uint16_t phase = blip_tick * 11.3718;
-    
-    for(int i = 0; i < 8; i++) {
-      int16_t b1 = lerp_s8_s16(ssintab, phase);
-      uint16_t b = b1 + 32768;
-      blip_pixels[i] = blip_scale(lemon, b);
-      phase += 7000;
-    }
-    */
-    
     //blip_audio_enable = buttonstate2;
 
     blip_clear();
@@ -92,4 +87,7 @@ int main(void)
 	}
 }
 
-
+extern "C" {
+void exit() {
+}
+};  

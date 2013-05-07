@@ -17,9 +17,35 @@
 #define hi8(A) (((uint16_t)A) >> 8)
 
 //--------------------------------------------------------------------------------
+// Our "framebuffer" is a simple array of 8 RGB pixels.
+
+struct Color {
+  uint16_t r;
+  uint16_t g;
+  uint16_t b;
+
+  static Color fromRGB(uint16_t r, uint16_t g, uint16_t b);
+  static Color fromRGB(int r, int g, int b);
+  static Color fromRGB(uint8_t r, uint8_t g, uint8_t b);
+  static Color fromRGB(float r, float g, float b);
+
+  static Color fromHue(uint16_t h);
+  static Color fromHex(const char* hexcode);
+};
+
+extern Color blip_pixels[8];
+
+//--------------------------------------------------------------------------------
 
 // Install the Bliplace LED drivers & interrupts.
 void blip_setup();
+
+// Turn off all peripherals, disable all interrupts.
+void blip_shutdown();
+
+// Put the Bliplace to sleep - it will wake up (and return from this function
+// call) when the button has been pressed for 1/8 second.
+void blip_sleep();
 
 // Run a simple self-test of the LEDs. Loops forever.
 void blip_selftest();
@@ -27,22 +53,52 @@ void blip_selftest();
 // Clear the framebuffer to black.
 void blip_clear();
 
-// Swap immediately.
+// Display the contents of blip_pixels immediately.
 void blip_swap();
 
-// Swap w/ a fixed refresh rate of 64 hz.
+// Display the contents of blip_pixels, but synchronize with the global timer
+// so that the LEDs will change at a maximum rate of 64 hertz.
 void blip_swap64();
 
 //--------------------------------------------------------------------------------
-// Our "framebuffer" is a simple array of 8 RGB pixels.
 
-struct Pixel {
-  uint16_t r;
-  uint16_t g;
-  uint16_t b;
-};
+uint16_t blip_sin(uint16_t x);
+uint16_t blip_cos(uint16_t x);
 
-extern struct Pixel blip_pixels[8];
+int16_t  blip_ssin(uint16_t x);
+int16_t  blip_scos(uint16_t x);
+
+uint16_t blip_hsv_r(uint16_t h);
+uint16_t blip_hsv_g(uint16_t h);
+uint16_t blip_hsv_b(uint16_t h);
+
+uint16_t blip_pow2(uint16_t x);
+uint16_t blip_pow3(uint16_t x);
+uint16_t blip_pow4(uint16_t x);
+uint16_t blip_pow5(uint16_t x);
+uint16_t blip_pow6(uint16_t x);
+uint16_t blip_pow7(uint16_t x);
+
+uint16_t blip_noise(uint16_t x);
+uint16_t blip_random();
+
+uint16_t blip_scale(uint16_t x, uint16_t s);
+int16_t  blip_scale(int16_t x, uint16_t s);
+uint16_t blip_smadd(uint16_t a, uint16_t b);
+
+uint16_t blip_lookup(const uint8_t* table, uint16_t x);
+
+uint16_t blip_history1(uint16_t x);
+uint16_t blip_history2(uint16_t x);
+
+//--------------------------------------------------------------------------------
+
+Color    blip_scale(Color const& c, uint16_t s);
+Color    blip_scale(Color const& c, uint16_t s1, uint16_t s2);
+Color    blip_add(Color const& a, Color const& b);
+Color    blip_smadd(Color const& a, Color const& b);
+Color    blip_lerp(Color const& a, Color const& b, uint16_t x);
+Color    blip_hsv(uint16_t h);
 
 //--------------------------------------------------------------------------------
 
