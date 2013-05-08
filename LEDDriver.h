@@ -31,6 +31,8 @@ struct Color {
 
   static Color fromHue(uint16_t h);
   static Color fromHex(const char* hexcode);
+  
+  Color operator * (uint16_t scale);    
 };
 
 extern Color blip_pixels[8];
@@ -45,7 +47,7 @@ void blip_shutdown();
 
 // Put the Bliplace to sleep - it will wake up (and return from this function
 // call) when the button has been pressed for 1/8 second.
-void blip_sleep();
+void blip_sleep(uint8_t sink);
 
 // Run a simple self-test of the LEDs. Loops forever.
 void blip_selftest();
@@ -64,6 +66,7 @@ void blip_swap64();
 
 uint16_t blip_sin(uint16_t x);
 uint16_t blip_cos(uint16_t x);
+uint16_t blip_halfsin(uint16_t x);
 
 int16_t  blip_ssin(uint16_t x);
 int16_t  blip_scos(uint16_t x);
@@ -78,6 +81,12 @@ uint16_t blip_pow4(uint16_t x);
 uint16_t blip_pow5(uint16_t x);
 uint16_t blip_pow6(uint16_t x);
 uint16_t blip_pow7(uint16_t x);
+
+uint16_t blip_root2(uint16_t x);
+uint16_t blip_root3(uint16_t x);
+uint16_t blip_root4(uint16_t x);
+uint16_t blip_root6(uint16_t x);
+uint16_t blip_root9(uint16_t x);
 
 uint16_t blip_noise(uint16_t x);
 uint16_t blip_random();
@@ -99,6 +108,10 @@ Color    blip_add(Color const& a, Color const& b);
 Color    blip_smadd(Color const& a, Color const& b);
 Color    blip_lerp(Color const& a, Color const& b, uint16_t x);
 Color    blip_hsv(uint16_t h);
+
+//--------------------------------------------------------------------------------
+
+void blip_draw_sin(uint16_t phase, uint16_t frequency, Color color);
 
 //--------------------------------------------------------------------------------
 

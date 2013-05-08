@@ -10,26 +10,29 @@ typedef void (*pattern_callback)();
 
 int pattern_index = 0;
 
-void SleepPattern();
+void SleepRed();
+void SleepGreen();
+void SleepBlue();
 
 pattern_callback patterns[] = {
+	SunAndStars,
+	SlowColorCycle,
   Ocean,
-  SleepPattern,
+	Blackbody,
+  SleepRed,
+  SleepGreen,
+  SleepBlue,
 	CheshireSmile,
   BouncingBalls,
 	RomanCandle,
-	SlowColorCycle,
 	AudioMeter,
   Confetti,
-	SunAndStars,
 	DancingSapphire,
   hsv_test,
-	Blackbody,
 	Bliplace1,
 	PulsingRainbows,
 	//Fireworks,
   
-	pov_test,
 	red_test,
 	green_test,
 	blue_test,
@@ -37,13 +40,13 @@ pattern_callback patterns[] = {
 
 const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
 
-void SleepPattern() {
+void SleepPattern(uint8_t sink) {
   // Clear the screen.
   blip_clear();
   blip_swap();
   
   // Go to sleep.
-  blip_sleep();
+  blip_sleep(sink);
   
   // When we wake up, advance to the next pattern so we don't just go back
   // to sleep again.
@@ -54,6 +57,18 @@ void SleepPattern() {
   // the wake-up button press.
   while(buttonstate1 == 0);
   debounce_down1 = 0;
+}
+  
+void SleepRed() {
+  SleepPattern(SINK_RED);
+}
+
+void SleepGreen() {
+  SleepPattern(SINK_GREEN);
+}
+
+void SleepBlue() {
+  SleepPattern(SINK_BLUE);
 }
 
 extern uint8_t blip_bits_green[8];
@@ -66,6 +81,10 @@ const Color lemon = Color::fromHex("ffff33");
 
 int main(void)
 {
+  uint16_t s1 = blip_halfsin(0);
+  uint16_t s2 = blip_halfsin(32768);
+  uint16_t s3 = blip_halfsin(65535);
+
   //blip_selftest();
   
 	blip_setup();
@@ -83,6 +102,17 @@ int main(void)
 
     blip_clear();
     patterns[pattern_index]();
+    
+    //uint16_t t = blip_tick * 16;
+    
+    //t = blip_pow6(65536 - t);
+    //t = blip_halfsin(t);
+    //t = blip_pow4(t);
+    
+    //blip_pixels[0].r = t;
+    //blip_pixels[1].r = blip_sin(blip_tick * 16 - 16384);
+    //Color teal = Color::fromHex("#0f8");
+    //blip_draw_sin(blip_tick * 16, 8192, teal);
 		blip_swap();
 	}
 }

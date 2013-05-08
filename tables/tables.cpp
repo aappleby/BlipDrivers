@@ -218,24 +218,9 @@ void ssintab() {
 
 int main(int argc, char** argv)
 {
-  uint8_t present[256];
-  memset(present, 0, 256);
-
-  for(uint16_t i = 0; i < 256; i++) {
-    uint16_t x = i;
-    x *= 97;
-    x = (x ^ x >> 8) & 0xFF;
-    x++;
-    x *= 113;
-    x = (x ^ x >> 8) & 0xFF;
-    printf("%d\n", x);
-    present[i] = 1;
+  for(int i = 0; i < 257; i++) {
+    tabprint8(i, i);
   }
-  int count = 0;
-  for (int i = 0; i < 256; i++) count += present[i];
-  printf("%d\n", count);
-  //ssintab();
-  //printf("\n");
 
   return 0;
 }

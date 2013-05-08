@@ -3,6 +3,7 @@
 #include "LEDDriver.h"
 
 #include <avr/pgmspace.h>
+#include <math.h>
 
 //--------------------------------------------------------------------------------
 // Tests button functionality.
@@ -137,13 +138,9 @@ void Blackbody() {
 		phases[i] += blip_random() & 63;
 		uint16_t cursor = phases[i];
     
-    uint16_t r = blip_lookup(pulse_2_2, cursor);
-    uint16_t g = blip_lookup(pulse_2_3, cursor);
-    uint16_t b = blip_lookup(pulse_2_6, cursor);
-    
-		blip_pixels[i].r = r;
-		blip_pixels[i].g = g;
-		blip_pixels[i].b = b;
+		blip_pixels[i].r = blip_pow2( blip_halfsin( blip_root2(cursor) ) );
+		blip_pixels[i].g = blip_pow3( blip_halfsin( blip_root2(cursor) ) );
+		blip_pixels[i].b = blip_pow6( blip_halfsin( blip_root2(cursor) ) );
 	}
 }
 
@@ -179,8 +176,8 @@ void DancingSapphire() {
 	uint16_t phase2 = timer2;
 
 	for(int i = 0; i < 8; i++) {
-		uint16_t g = blip_lookup(pulse_2_4, phase1);
-		uint16_t b = blip_lookup(pulse_2_4, 65535 - phase2);
+		uint16_t g = blip_pow4(blip_halfsin(blip_root2(phase1)));
+		uint16_t b = blip_pow4(blip_halfsin(blip_root2(65535 - phase2)));
 		blip_pixels[i].g = g;
 		blip_pixels[i].b = b;
     
@@ -217,66 +214,14 @@ void PulsingRainbows() {
 // Slow, non-audio-responsive color fading. Good test for LED color mixing
 // smoothness.
 
-Color blep = Color::fromHex("#F08");
-
 void SlowColorCycle() {
-	uint16_t phase_r = blip_tick * 3;
-	uint16_t phase_g = blip_tick * 4;
-	uint16_t phase_b = blip_tick * 5;
-
+  uint16_t time = blip_tick;
 	for(int i = 0; i < 8; i++) {
-    uint16_t r = blip_sin(phase_r);
-    uint16_t g = blip_sin(phase_g);
-    uint16_t b = blip_sin(phase_b);
-
-		blip_pixels[i].r = r;
-		blip_pixels[i].g = g;
-		blip_pixels[i].b = b;
-    
-    phase_r += 6500;
-    phase_g += 7000;
-    phase_b += 7500;
+		blip_pixels[i].r = blip_sin(time * 3 + i * 6500);
+		blip_pixels[i].g = blip_sin(time * 4 + i * 7000);
+		blip_pixels[i].b = blip_sin(time * 5 + i * 7500);
 	}
-  
-  blip_pixels[7] = blep;
 }	
-
-//--------------------------------------------------------------------------------
-// Displays very fast-moving sine waves in all three color channels,
-// serves as a crude persistence-of-vision effect.
-
-void pov_test() {
-	static uint16_t timerR;
-	static uint16_t timerG;
-	static uint16_t timerB;
-	
-	const int stepR = 25;
-	const int stepG = 36;
-	const int stepB = 37;
-	const int speedR = -327;
-	const int speedG = -528;
-	const int speedB = 629;
-	
-	timerR += speedR;
-	timerG += speedG;
-	timerB += speedB;
-	uint8_t phaseR = timerR >> 8;
-	uint8_t phaseG = timerG >> 8;
-	uint8_t phaseB = timerB >> 8;
-	
-	uint8_t cursorR = phaseR;
-	uint8_t cursorG = phaseG;
-	uint8_t cursorB = phaseB;
-	for(int i = 0; i < 8; i++) {
-		blip_pixels[i].r = pgm_read_byte(pulse_5_6 + cursorR) << 8;
-		blip_pixels[i].g = pgm_read_byte(pulse_5_6 + cursorG) << 8;
-		blip_pixels[i].b = pgm_read_byte(pulse_5_6 + cursorB) << 8;
-		
-		cursorR += stepR;
-		cursorG += stepG;
-		cursorB += stepB;
-	}
-}
 
 //--------------------------------------------------------------------------------
 // Blue sparkles that react to treble, big yellow blob in the middle

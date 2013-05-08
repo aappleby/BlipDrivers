@@ -950,10 +950,10 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 
 	// 17 cycles (part 1 of 2, this part is 12 cycles)
 	{
-		// blip_brightaccum1 += pgm_read_byte(gammatab+bright1);
+		// blip_brightaccum1 += pgm_read_byte(root2+bright1);
 		asm("ldi r31, 0x00");
-		asm("subi r30, lo8(-(gammatab))");
-		asm("sbci r31, hi8(-(gammatab))");
+		asm("subi r30, lo8(-(root2))");
+		asm("sbci r31, hi8(-(root2))");
 		asm("lpm r28, Z");
 		asm("ldi r29, 0x00");
 		asm("lds r30, blip_brightaccum1 + 0");
@@ -1055,10 +1055,10 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 
 	// 17 cycles
 	{
-		// blip_brightaccum2 += pgm_read_byte(gammatab+bright2);
+		// blip_brightaccum2 += pgm_read_byte(root2+bright2);
 		asm("ldi r31, 0x00");
-		asm("subi r30, lo8(-(gammatab))");
-		asm("sbci r31, hi8(-(gammatab))");
+		asm("subi r30, lo8(-(root2))");
+		asm("sbci r31, hi8(-(root2))");
 		asm("lpm r28, Z");
 		asm("ldi r29, 0x00");
 		asm("lds r30, blip_brightaccum2 + 0");
@@ -1638,7 +1638,7 @@ uint8_t extern const PROGMEM sources[]  =
 
 extern const uint8_t sintab[] PROGMEM;
 
-void blip_sleep()
+void blip_sleep(uint8_t sink)
 {
   // Turn off all peripherals and disable brownout detection during sleep mode.
   blip_shutdown();
@@ -1655,7 +1655,7 @@ void blip_sleep()
   DDRD = 0xFF;
   PORTD = 0x00;
   DDRB = 0xFF;
-  PORTB = SINK_GREEN;
+  PORTB = sink;
   
   uint8_t sin_cursor = 128;
   uint8_t led_cursor = 0;

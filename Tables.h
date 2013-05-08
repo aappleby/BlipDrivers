@@ -11,6 +11,9 @@ extern const uint8_t gammatab[256] PROGMEM;
 extern const uint8_t sintab[256] PROGMEM;
 extern const int8_t  ssintab[256] PROGMEM;
 
+extern const uint8_t root2[257] PROGMEM;
+extern const uint8_t root3[257] PROGMEM;
+
 extern const uint8_t pulse_5_2[256] PROGMEM;
 extern const uint8_t pulse_5_1[256] PROGMEM;
 extern const uint8_t pulse_5_3[256] PROGMEM;

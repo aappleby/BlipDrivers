@@ -9,7 +9,6 @@ void red_test();
 void green_test();
 void blue_test();
 void hsv_test();
-void pov_test();
 
 void PulsingRainbows();
 void Gradients();

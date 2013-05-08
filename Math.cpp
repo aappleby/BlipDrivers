@@ -516,7 +516,7 @@ int16_t lerp_s8_s16(const int8_t* table, int16_t x) {
 }  
 
 
-// Interpolate between elements in a 256-element, 8-bit table, no wrapping,
+// Interpolate between elements in a 257-element, 8-bit table, no wrapping,
 // expanding the table value out to 16 bits.
 __attribute__((naked)) uint16_t lerp_u8_u16_nowrap(const uint8_t* table, uint16_t x) {
   asm("clr r20");
@@ -729,6 +729,10 @@ uint16_t blip_cos(uint16_t x) {
   return lerp_u8_u16(sintab, x + 16384);
 }
 
+uint16_t blip_halfsin(uint16_t x) {
+  return (blip_sin(x / 2) - 32768) * 2;
+}  
+
 int16_t blip_ssin(uint16_t x) {
   return blip_sin(x) ^ 0x8000;
 }  
@@ -793,6 +797,26 @@ uint16_t blip_pow7(uint16_t x) {
   uint16_t x3 = blip_scale(x, x2);
   uint16_t x4 = blip_scale(x2, x2);
   return blip_scale(x3, x4);
+}
+
+uint16_t blip_root2(uint16_t x) {
+  return lerp_u8_u16_nowrap(root2, x);
+}
+
+uint16_t blip_root3(uint16_t x) {
+  return lerp_u8_u16_nowrap(root3, x);
+}
+
+uint16_t blip_root4(uint16_t x) {
+  return blip_root2(blip_root2(x));
+}
+
+uint16_t blip_root6(uint16_t x) {
+  return blip_root3(blip_root2(x));
+}
+
+uint16_t blip_root9(uint16_t x) {
+  return blip_root3(blip_root3(x));
 }  
 
 uint16_t blip_noise(uint16_t x) {
@@ -870,3 +894,12 @@ Color blip_lerp(Color const& a, Color const& b, uint16_t x) {
 }
 
 //-----------------------------------------------------------------------------
+// Drawing functinon
+
+void blip_draw_sin(uint16_t phase, uint16_t frequency, Color color) {
+  uint16_t x = phase;
+  for (int i = 0; i < 8; i++) {
+    blip_pixels[i] = blip_scale(color, blip_sin(x));
+    x += frequency;
+  }
+}  
