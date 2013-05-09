@@ -47,7 +47,7 @@ void blip_shutdown();
 
 // Put the Bliplace to sleep - it will wake up (and return from this function
 // call) when the button has been pressed for 1/8 second.
-void blip_sleep(uint8_t sink);
+void blip_sleep();
 
 // Run a simple self-test of the LEDs. Loops forever.
 void blip_selftest();

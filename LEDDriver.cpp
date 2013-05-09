@@ -78,7 +78,11 @@ uint16_t blip_brightaccum1 = 0;
 uint16_t blip_brightaccum2 = 0;
 
 // PWM callback function pointer dispatched by the timer interrupt.
-void (*blip_timer_callback)() ;
+void (*blip_timer_callback)();
+
+// Time when we last saw activity on the bass audio channel. If we haven't seen
+// any activity in 5 minutes, we go to sleep.
+uint32_t blip_idle = 0;
 
 //---------------------------------------------------------------------------------
 // Timer interrupt, dispatches our LED update callback. Note that we _ijmp_ to
@@ -1379,7 +1383,21 @@ __attribute__((naked)) void swap4d(void* vin, uint8_t* vout) {
 // convert from logical to physical pixel order & from brightness values to bit
 // plane values.
 
+// We also do userland bookkeeping here for things that don't need to be tackled
+// every PWM cycle - checking for idle mode, checking battery voltage, etc.
+
 void blip_swap() {
+  // If we hear bass, remember when we heard it.
+  if (blip_bright2 > 32768) {
+    blip_idle = blip_tick;
+  }
+  // If we haven't heard any bass in 10 minutes, go to sleep.
+  if ((blip_tick - blip_idle) > 2457600) {
+    blip_sleep();
+  }
+  
+  // TODO(aappleby): Check battery voltage every N seconds & go to sleep if low.
+  
   // Wait for the blanking flag to go from low to high.
 	while(blip_blank);
 	while(!blip_blank);
@@ -1579,6 +1597,13 @@ void blip_setup() {
   // microphone from this port so that we can turn it off during sleep mode.
 	DDRC = (1 << MIC_POWER);
 	PORTC = (1 << BUTTON1_PIN) | (1 << BUTTON2_PIN) | (1 << MIC_POWER);
+  
+  // Disable sleep modes.
+  SMCR = 0;
+  
+  // Turn the watchdog timer off.
+  WDTCSR = bit(WDCE) | bit(WDE);
+  WDTCSR = 0;
 
 	// Turn the ADC on and set it up to read from the microphone input,
   // left-adjust the result, and blip_sample1 in (14 * 32) = 448 cycles (56 uS
@@ -1596,6 +1621,24 @@ void blip_setup() {
 	TCCR1A = 0;
 	TCCR1B = (1 << CS10);
 
+  // Hardware peripherals are configured, reset all the software state.
+  
+  // Reset the global timers.
+  blip_tick = 0;
+  blip_idle = 0;
+  
+  // Wait for all buttons to be released & reset button state.
+  while((PINC & (1 << BUTTON1_PIN)) == 0);
+  while((PINC & (1 << BUTTON2_PIN)) == 0);
+  
+  buttonstate1 = 0;
+  debounce_up1 = 0;
+  debounce_down1 = 0;
+
+  buttonstate2 = 0;
+  debounce_up2 = 0;
+  debounce_down2 = 0; 
+
   // The first callback that our timer interrupt will fire is for the first
   // half of the red field.
 	blip_timer_callback = red_field_A;
@@ -1604,7 +1647,6 @@ void blip_setup() {
 	// interrupts.
   blip_audio_enable = 1;
 	sbi(ADCSRA,ADSC);
-
 	sei();
 }
 
@@ -1638,7 +1680,7 @@ uint8_t extern const PROGMEM sources[]  =
 
 extern const uint8_t sintab[] PROGMEM;
 
-void blip_sleep(uint8_t sink)
+void blip_sleep()
 {
   // Turn off all peripherals and disable brownout detection during sleep mode.
   blip_shutdown();
@@ -1651,15 +1693,18 @@ void blip_sleep(uint8_t sink)
   WDTCSR = bit(WDCE) | bit(WDE);
   WDTCSR = bit(WDIE);
 
-  // Set the LED array up to display only the green channel.
+  // Set the LED array up to display only a single color channel.
   DDRD = 0xFF;
   PORTD = 0x00;
   DDRB = 0xFF;
-  PORTB = sink;
+  PORTB = SINK_RED;
   
   uint8_t sin_cursor = 128;
   uint8_t led_cursor = 0;
   uint8_t button_counter = 0;
+  uint8_t sink_cursor = 0;
+  
+  uint8_t sinks[] = { SINK_RED, SINK_GREEN, SINK_BLUE };
 
   // Sleep forever (or until the user presses a button).
   while(1)
@@ -1675,14 +1720,7 @@ void blip_sleep(uint8_t sink)
     
     // If button 1 has been pressed for 7 ticks (~1/8 second), turn off the watchdog
     // timer and leave sleep mode.
-    if(button_counter == 7)
-    {
-      SMCR = 0;
-      WDTCSR = bit(WDCE) | bit(WDE);
-      WDTCSR = 0;
-      blip_setup();
-      return;
-    }
+    if(button_counter == 7) break;
 
     // Otherwise send a tiny pulse of light out through one of the green LEDs.
     // The length of the pulse is determined by the contents of the sine wave
@@ -1706,8 +1744,14 @@ void blip_sleep(uint8_t sink)
     if(sin_cursor == 0) {
       led_cursor++;
       if (led_cursor == 13) led_cursor = 0;
+      sink_cursor++;
+      if (sink_cursor == 3) sink_cursor = 0;
+      PORTB = sinks[sink_cursor];
     }      
   }
+
+  // We're waking up, reinitialize all the peripherals.
+  blip_setup();
 }
 
 //---------------------------------------------------------------------------------

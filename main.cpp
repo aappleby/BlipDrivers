@@ -10,18 +10,14 @@ typedef void (*pattern_callback)();
 
 int pattern_index = 0;
 
-void SleepRed();
-void SleepGreen();
-void SleepBlue();
+void SleepPattern();
 
 pattern_callback patterns[] = {
 	SunAndStars,
 	SlowColorCycle,
   Ocean,
 	Blackbody,
-  SleepRed,
-  SleepGreen,
-  SleepBlue,
+  SleepPattern,
 	CheshireSmile,
   BouncingBalls,
 	RomanCandle,
@@ -40,35 +36,18 @@ pattern_callback patterns[] = {
 
 const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
 
-void SleepPattern(uint8_t sink) {
+void SleepPattern() {
   // Clear the screen.
   blip_clear();
   blip_swap();
   
   // Go to sleep.
-  blip_sleep(sink);
+  blip_sleep();
   
   // When we wake up, advance to the next pattern so we don't just go back
   // to sleep again.
   pattern_index++;
   if (pattern_index == pattern_count) pattern_index = 0;
-  
-  // Wait for the button to be released so the main loop doesn't respond to
-  // the wake-up button press.
-  while(buttonstate1 == 0);
-  debounce_down1 = 0;
-}
-  
-void SleepRed() {
-  SleepPattern(SINK_RED);
-}
-
-void SleepGreen() {
-  SleepPattern(SINK_GREEN);
-}
-
-void SleepBlue() {
-  SleepPattern(SINK_BLUE);
 }
 
 extern uint8_t blip_bits_green[8];
