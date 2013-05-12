@@ -1,8 +1,6 @@
 #ifndef PATTERNS_H_
 #define PATTERNS_H_
 
-#include <avr/pgmspace.h>
-
 void AudioMeter();
 void button_test();
 void red_test();

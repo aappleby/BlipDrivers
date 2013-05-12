@@ -379,3 +379,64 @@ void Confetti() {
 }  
 
 //--------------------------------------------------------------------------------
+
+extern int pattern_index;
+
+void SleepPattern() {
+  // Clear the screen.
+  blip_clear();
+  blip_swap();
+  
+  // Go to sleep.
+  blip_sleep();
+  
+  // When we wake up, advance to the next pattern so we don't just go back
+  // to sleep again.
+  pattern_index++;
+}
+
+//--------------------------------------------------------------------------------
+
+void setup() {
+  blip_setup();
+}
+
+typedef void (*pattern_callback)();
+
+pattern_callback patterns[] = {
+  BouncingBalls,
+  Ocean,
+  SunAndStars,
+  SlowColorCycle,
+  Blackbody,
+  SleepPattern,
+  CheshireSmile,
+  RomanCandle,
+  AudioMeter,
+  Confetti,
+  DancingSapphire,
+  hsv_test,
+  Bliplace1,
+  PulsingRainbows,
+  red_test,
+  green_test,
+  blue_test,
+};
+
+int pattern_index = 0;
+const int pattern_count = sizeof(patterns) / sizeof(patterns[0]);
+
+void blip_selftest();
+
+void loop() {
+  //blip_selftest();
+  blip_clear();
+  if((buttonstate1 == 1) && (debounce_down1 > 256)) {
+    pattern_index++;
+    debounce_down1 = 0;
+  }
+  
+  if (pattern_index >= pattern_count) pattern_index = 0;
+  patterns[pattern_index]();
+  blip_swap();
+}

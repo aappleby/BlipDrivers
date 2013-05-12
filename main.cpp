@@ -1,8 +1,5 @@
+#include "Bliplace.h"
 #include "Patterns.h"
-#include "LEDDriver.h"
-#include "Tables.h"
-
-#define F_CPU 8000000
 
 //------------------------------------------------------------------------------
 
@@ -13,13 +10,13 @@ int pattern_index = 0;
 void SleepPattern();
 
 pattern_callback patterns[] = {
+  BouncingBalls,
+  Ocean,
 	SunAndStars,
 	SlowColorCycle,
-  Ocean,
 	Blackbody,
   SleepPattern,
 	CheshireSmile,
-  BouncingBalls,
 	RomanCandle,
 	AudioMeter,
   Confetti,
@@ -27,8 +24,6 @@ pattern_callback patterns[] = {
   hsv_test,
 	Bliplace1,
 	PulsingRainbows,
-	//Fireworks,
-  
 	red_test,
 	green_test,
 	blue_test,
@@ -52,22 +47,22 @@ void SleepPattern() {
 
 extern uint8_t blip_bits_green[8];
 
+/*
 const Color grape = Color::fromHex("421C52");
 const Color peach = Color::fromHex("F95");
 const Color hotpink = Color::fromHex("f660ab");
 const Color pine = Color::fromHex("#466d3d");
 const Color lemon = Color::fromHex("ffff33");
+*/
 
 int main(void)
 {
-  uint16_t s1 = blip_halfsin(0);
-  uint16_t s2 = blip_halfsin(32768);
-  uint16_t s3 = blip_halfsin(65535);
-
-  //blip_selftest();
+  //wdt_reset();
+  //wdt_disable();
+  
+  blip_selftest();
   
 	blip_setup();
-  
   
 	while(1) {
     
@@ -95,8 +90,3 @@ int main(void)
 		blip_swap();
 	}
 }
-
-extern "C" {
-void exit() {
-}
-};  

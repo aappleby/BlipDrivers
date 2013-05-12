@@ -18,7 +18,8 @@
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
-    <OverrideVtorValue>exception_table</OverrideVtorValue>
+    <OverrideVtorValue>
+    </OverrideVtorValue>
     <eraseonlaunchrule>0</eraseonlaunchrule>
     <AsfVersion>3.1.3</AsfVersion>
     <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
@@ -137,31 +138,19 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Config.h">
+    <Compile Include="Bliplace.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="LEDDriver.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="LEDDriver.h">
+    <Compile Include="Bliplace.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Math.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Patterns.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Patterns.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Tables.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Tables.h">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>

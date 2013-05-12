@@ -1,11 +1,32 @@
-#include "LEDDriver.h"
+#include "Bliplace.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <avr/sleep.h>
 
-//#include <util/delay.h>
+//--------------------------------------------------------------------------------
+
+#define bit(A)   (1 << A)
+#define sbi(p,b) { p |= (unsigned char)bit(b); }
+#define cbi(p,b) { p &= (unsigned char)~bit(b); }
+#define tbi(p,b) { p ^= (unsigned char)bit(b); }
+#define gbi(p,b) (p & (unsigned char)bit(b))
+
+#define lo8(A) (((uint16_t)A) & 0xFF)
+#define hi8(A) (((uint16_t)A) >> 8)
+
+//--------------------------------------------------------------------------------
+// audio processing configs
+
+#define BLIP_TRIGGER1_MIN  50
+#define BLIP_TRIGGER2_MIN  50
+
+#define BRIGHT1_UP   (65535 / 30)
+#define BRIGHT1_DOWN (65535 / 300)
+
+#define BRIGHT2_UP   (65535 / 40)
+#define BRIGHT2_DOWN (65535 / 700)
 
 //--------------------------------------------------------------------------------
 // Externally-visible data.
@@ -26,8 +47,6 @@ volatile uint16_t debounce_up2 = 0;
 volatile uint16_t debounce_down2 = 0;
 
 uint8_t blip_history[512];
-
-
 
 //--------------------------------------------------------------------------------
 // Internal data
@@ -84,6 +103,1034 @@ void (*blip_timer_callback)();
 // any activity in 5 minutes, we go to sleep.
 uint32_t blip_idle = 0;
 
+//-----------------------------------------------------------------------------
+// Exponential ramp.
+
+uint8_t extern const PROGMEM exptab[256]  =
+{
+  0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,5,5,
+  5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,8,9,9,9,9,9,10,10,10,
+  10,10,11,11,11,11,12,12,12,12,13,13,13,14,14,14,14,15,15,15,16,16,16,17,
+  17,18,18,18,19,19,20,20,21,21,21,22,22,23,23,24,24,25,25,26,27,27,28,28,
+  29,30,30,31,32,32,33,34,35,35,36,37,38,39,39,40,41,42,43,44,45,46,47,48,
+  49,50,51,52,53,55,56,57,58,59,61,62,63,65,66,68,69,71,72,74,76,77,79,81,
+  82,84,86,88,90,92,94,96,98,100,102,105,107,109,112,114,117,119,122,124,
+  127,130,133,136,139,142,145,148,151,155,158,162,165,169,172,176,180,184,
+  188,192,196,201,205,210,214,219,224,229,234,239,244,250,255,
+};
+
+// Unsigned sinusoid table.
+extern const uint8_t sintab[256] PROGMEM =
+{	
+128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173,
+176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211, 213, 215,
+218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240, 241, 243, 244, 
+245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254, 254, 255, 255, 255, 
+255, 255, 255, 255, 254, 254, 254, 253, 253, 252, 251, 250, 250, 249, 248, 246, 
+245, 244, 243, 241, 240, 238, 237, 235, 234, 232, 230, 228, 226, 224, 222, 220, 
+218, 215, 213, 211, 208, 206, 203, 201, 198, 196, 193, 190, 188, 185, 182, 179, 
+176, 173, 170, 167, 165, 162, 158, 155, 152, 149, 146, 143, 140, 137, 134, 131, 
+128, 124, 121, 118, 115, 112, 109, 106, 103, 100, 97, 93, 90, 88, 85, 82, 79, 
+76, 73, 70, 67, 65, 62, 59, 57, 54, 52, 49, 47, 44, 42, 40, 37, 35, 33, 31, 29, 
+27, 25, 23, 21, 20, 18, 17, 15, 14, 12, 11, 10, 9, 7, 6, 5, 5, 4, 3, 2, 2, 1, 1, 
+1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 5, 5, 6, 7, 9, 10, 11, 12, 14, 15, 17, 
+18, 20, 21, 23, 25, 27, 29, 31, 33, 35, 37, 40, 42, 44, 47, 49, 52, 54, 57, 59, 62, 
+65, 67, 70, 73, 76, 79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124
+};
+
+// Signed sinusoid table.
+extern const int8_t ssintab[256] PROGMEM =
+{
+   0,    3,    6,    9,   12,   15,   18,   21,   24,   27,   30,   33,   36,   39,   42,   45,
+  48,   51,   54,   57,   59,   62,   65,   67,   70,   73,   75,   78,   80,   82,   85,   87,
+  89,   91,   94,   96,   98,  100,  102,  103,  105,  107,  108,  110,  112,  113,  114,  116,
+ 117,  118,  119,  120,  121,  122,  123,  123,  124,  125,  125,  126,  126,  126,  126,  126,
+ 127,  126,  126,  126,  126,  126,  125,  125,  124,  123,  123,  122,  121,  120,  119,  118,
+ 117,  116,  114,  113,  112,  110,  108,  107,  105,  103,  102,  100,   98,   96,   94,   91,
+  89,   87,   85,   82,   80,   78,   75,   73,   70,   67,   65,   62,   59,   57,   54,   51,
+  48,   45,   42,   39,   36,   33,   30,   27,   24,   21,   18,   15,   12,    9,    6,    3,
+   0,   -3,   -6,   -9,  -12,  -15,  -18,  -21,  -24,  -27,  -30,  -33,  -36,  -39,  -42,  -45,
+ -48,  -51,  -54,  -57,  -59,  -62,  -65,  -67,  -70,  -73,  -75,  -78,  -80,  -82,  -85,  -87,
+ -89,  -91,  -94,  -96,  -98, -100, -102, -103, -105, -107, -108, -110, -112, -113, -114, -116,
+-117, -118, -119, -120, -121, -122, -123, -123, -124, -125, -125, -126, -126, -126, -126, -126,
+-127, -126, -126, -126, -126, -126, -125, -125, -124, -123, -123, -122, -121, -120, -119, -118,
+-117, -116, -114, -113, -112, -110, -108, -107, -105, -103, -102, -100,  -98,  -96,  -94,  -91,
+ -89,  -87,  -85,  -82,  -80,  -78,  -75,  -73,  -70,  -67,  -65,  -62,  -59,  -57,  -54,  -51,
+ -48,  -45,  -42,  -39,  -36,  -33,  -30,  -27,  -24,  -21,  -18,  -15,  -12,   -9,   -6,   -3,
+};
+
+// Square root.
+extern const uint8_t root2[257] PROGMEM = {
+  0,  15,  22,  27,  31,  35,  39,  42,  45,  47,  50,  52,  55,  57,  59,  61,
+ 63,  65,  67,  69,  71,  73,  74,  76,  78,  79,  81,  82,  84,  85,  87,  88,
+ 90,  91,  92,  94,  95,  96,  98,  99, 100, 102, 103, 104, 105, 106, 108, 109,
+110, 111, 112, 113, 114, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126,
+127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 138, 139, 140, 141,
+142, 143, 144, 145, 146, 146, 147, 148, 149, 150, 151, 152, 152, 153, 154, 155,
+156, 156, 157, 158, 159, 160, 160, 161, 162, 163, 164, 164, 165, 166, 167, 167,
+168, 169, 170, 170, 171, 172, 173, 173, 174, 175, 176, 176, 177, 178, 178, 179,
+180, 181, 181, 182, 183, 183, 184, 185, 185, 186, 187, 187, 188, 189, 189, 190,
+191, 191, 192, 193, 193, 194, 195, 195, 196, 197, 197, 198, 199, 199, 200, 200,
+201, 202, 202, 203, 204, 204, 205, 205, 206, 207, 207, 208, 209, 209, 210, 210,
+211, 212, 212, 213, 213, 214, 215, 215, 216, 216, 217, 217, 218, 219, 219, 220,
+220, 221, 221, 222, 223, 223, 224, 224, 225, 225, 226, 227, 227, 228, 228, 229,
+229, 230, 230, 231, 232, 232, 233, 233, 234, 234, 235, 235, 236, 236, 237, 237,
+238, 239, 239, 240, 240, 241, 241, 242, 242, 243, 243, 244, 244, 245, 245, 246,
+246, 247, 247, 248, 248, 249, 249, 250, 250, 251, 251, 252, 252, 253, 254, 254,
+255
+};
+
+// Cube root.
+extern const uint8_t root3[257] PROGMEM = {
+  0,  40,  50,  57,  63,  68,  72,  76,  80,  83,  86,  89,  91,  94,  96,  99,
+101, 103, 105, 107, 109, 110, 112, 114, 115, 117, 118, 120, 121, 123, 124, 126,
+127, 128, 130, 131, 132, 133, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144,
+145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 158, 159,
+160, 161, 162, 163, 163, 164, 165, 166, 167, 167, 168, 169, 170, 170, 171, 172,
+173, 173, 174, 175, 175, 176, 177, 177, 178, 179, 179, 180, 181, 181, 182, 183,
+183, 184, 185, 185, 186, 187, 187, 188, 188, 189, 190, 190, 191, 191, 192, 193,
+193, 194, 194, 195, 195, 196, 196, 197, 198, 198, 199, 199, 200, 200, 201, 201,
+202, 202, 203, 203, 204, 204, 205, 206, 206, 207, 207, 208, 208, 209, 209, 210,
+210, 210, 211, 211, 212, 212, 213, 213, 214, 214, 215, 215, 216, 216, 217, 217,
+218, 218, 218, 219, 219, 220, 220, 221, 221, 222, 222, 222, 223, 223, 224, 224,
+225, 225, 225, 226, 226, 227, 227, 228, 228, 228, 229, 229, 230, 230, 230, 231,
+231, 232, 232, 232, 233, 233, 234, 234, 234, 235, 235, 236, 236, 236, 237, 237,
+237, 238, 238, 239, 239, 239, 240, 240, 240, 241, 241, 242, 242, 242, 243, 243,
+243, 244, 244, 244, 245, 245, 246, 246, 246, 247, 247, 247, 248, 248, 248, 249,
+249, 249, 250, 250, 250, 251, 251, 251, 252, 252, 252, 253, 253, 253, 254, 254,
+255,
+};   
+
+// White noise.
+extern const uint8_t PROGMEM noise[256] =
+{
+  159,103,68,166,7,138,160,220,114,59,239,145,195,8,36,73,
+  132,168,71,149,170,150,70,133,153,218,20,2,98,231,24,110,
+  191,117,238,31,129,144,124,208,191,52,189,78,209,198,195,141,
+  253,209,11,189,66,144,150,223,164,172,108,180,236,109,146,130,
+  95,221,126,213,188,93,56,142,36,99,232,65,108,58,208,32,
+  143,204,160,232,27,178,133,78,43,74,113,151,138,45,60,156,
+  16,241,165,124,223,58,93,0,11,44,109,93,139,85,176,1,
+  170,39,106,186,168,143,72,184,47,245,232,135,130,134,191,118,
+  136,38,46,60,99,102,117,120,202,191,107,19,89,95,53,136,
+  179,68,85,128,127,90,155,143,246,13,193,212,126,212,35,88,
+  194,223,196,37,86,82,198,251,30,163,81,188,216,50,206,31,
+  111,93,230,8,79,217,197,233,134,108,109,142,81,45,162,39,
+  51,31,167,103,144,139,151,217,196,78,179,245,35,164,179,34,
+  50,32,73,180,174,122,175,16,206,13,53,163,188,107,104,247,
+  195,222,9,6,167,30,85,44,161,250,109,37,29,219,124,87,
+  167,80,151,156,194,4,162,92,44,169,95,213,246,216,127,38
+};
+
+// Hue ramp, for hue-to-color conversion.
+extern const uint8_t PROGMEM huetab[256] = {
+  0,   5,  11,  17,  23,  29,  35,  41,  47,  53,  59,  65,  71,  77,  83,  89,
+ 95, 101, 107, 113, 119, 125, 131, 137, 143, 149, 155, 161, 167, 173, 179, 185,
+191, 197, 203, 209, 215, 221, 227, 233, 239, 245, 251, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+255, 249, 243, 237, 231, 225, 219, 213, 207, 201, 195, 189, 183, 177, 171, 165,
+159, 153, 147, 141, 135, 129, 123, 117, 111, 105,  99,  93,  87,  81,  75,  69,
+ 63,  57,  51,  45,  39,  33,  27,  21,  15,   9,   3,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+}; 
+
+//-----------------------------------------------------------------------------
+// Xorshift RNG, from Wikipedia.
+
+uint32_t xor128(void) {
+  static uint32_t x = 123456789;
+  static uint32_t y = 362436069;
+  static uint32_t z = 521288629;
+  static uint32_t w = 88675123;
+  uint32_t t;
+ 
+  t = x ^ (x << 11);
+  x = y; y = z; z = w;
+  return w = w ^ (w >> 19) ^ (t ^ (t >> 8));
+}
+
+//-----------------------------------------------------------------------------
+// Fractional multiply functions.
+
+// Multiply two unsigned 16-bit fractions.
+__attribute__((naked)) uint16_t mul_f16(uint16_t a, uint16_t b) {
+  asm("clr r26");
+  
+  // r19:r18 = a
+  asm("movw r18, r24");
+
+  // r21:r20 = b  
+  asm("movw r20, r22");
+  
+  // r25:r24:r23:r22 = scratch
+  // scratch = ((signed)ah * (signed)bh) << 16;
+  asm("mul r19, r21");
+  asm("movw r24, r0");
+  
+  // scratch += al*bl
+  asm("mul r18, r20");
+  asm("movw r22, r0");
+  
+  // ah * bl
+  asm("mul r19, r20");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // bh * al
+  asm("mul r21, r18");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  asm("clr r1");
+  asm("ret");
+  
+  // Dummy return
+  return 0;
+}
+
+// Multiply two signed 16-bit fractions.
+__attribute__((naked)) int16_t mul_f16(int16_t a, int16_t b) {
+  // r26 = 0
+  asm("clr r26");
+
+  // r19:r18 = a
+  asm("movw r18, r24");
+
+  // r21:r20 = b
+  asm("movw r20, r22");
+  
+  // r25:r24:r23:r22 = scratch
+  // scratch = ((signed)ah * (signed)bh) << 16;
+  asm("muls r19, r21");
+  asm("movw r24, r0");
+  
+  // scratch += al*bl
+  asm("mul r18, r20");
+  asm("movw r22, r0");
+  
+  // (signed)ah * bl
+  asm("mulsu r19, r20");
+  asm("sbc r25, r26");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // (signed)bh * al
+  asm("mulsu r21, r18");
+  asm("sbc r25, r26");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // The result effectively has two sign bits, so shift
+  // it left 1 bit.  
+  asm("rol r23");
+  asm("rol r24");
+  asm("rol r25");
+  
+  asm("clr r1");
+  asm("ret");
+  
+  // Dummy return;
+  return 0;
+}
+
+// Multiply one signed and one unsigned 16-bit fraction.
+__attribute__((naked)) int16_t mul_f16(int16_t a, uint16_t b) {
+  // r26 = 0
+  asm("clr r26");
+
+  // r19:r18 = a
+  asm("movw r18, r24");
+
+  // r21:r20 = b
+  asm("movw r20, r22");
+  
+  // r25:r24:r23:r22 = scratch
+  
+  // scratch = ((signed)ah * bh) << 16;
+  asm("mulsu r19, r21");
+  asm("movw r24, r0");
+  
+  // scratch += al*bl
+  asm("mul r18, r20");
+  asm("movw r22, r0");
+  
+  // (signed)ah * bl
+  asm("mulsu r19, r20");
+  asm("sbc r25, r26");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // bh * al
+  asm("mul r21, r18");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}  
+
+
+// Multiply one unsigned and one signed 16-bit fraction.
+__attribute__((naked)) int16_t mul_f16(uint16_t a, int16_t b) {
+  // r26 = 0
+  asm("clr r26");
+
+  // r19:r18 = a
+  asm("movw r18, r24");
+
+  // r21:r20 = b
+  asm("movw r20, r22");
+  
+  // r25:r24:r23:r22 = scratch
+  // scratch = (ah * (signed)bh) << 16;
+  asm("mulsu r21, r19");
+  asm("movw r24, r0");
+  
+  // scratch += al*bl
+  asm("mul r18, r20");
+  asm("movw r22, r0");
+  
+  // ah * bl
+  asm("mul r19, r20");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // (signed)bh * al
+  asm("mulsu r21, r18");
+  asm("sbc r25, r26");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+// Interpolate between two values.
+
+// Interpolate between two unsigned 8-bit numbers.
+__attribute__((naked)) uint8_t lerp_u8(uint8_t x1, uint8_t x2, uint8_t t) {
+  // r24:r23 is our scratch space.
+  asm("mov r21, r24"); // x1 is now in r21
+  
+  // scratch = x2 * t
+  asm("mul r22, r20");
+  asm("mov r23, r0");
+  asm("mov r24, r1");
+  
+  // t = ~t
+  asm("com r20");
+  
+  // scratch += x1 * ~t
+  asm("mul r21, r20");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+
+  asm("clr r1");  
+  
+  // scratch += x1
+  asm("add r23, r21");
+  asm("adc r24, r1");
+
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}  
+
+// Interpolate between two signed 8-bit numbers.
+__attribute__((naked)) int8_t lerp_s8(int8_t a, int8_t b, uint8_t t) {
+  return lerp_u8(a ^ 0x80, b ^ 0x80, t) ^ 0x80;
+}  
+
+// Interpolate between two unsigned 16-bit numbers.
+__attribute__((naked)) uint16_t lerp_u16(uint16_t x1, uint16_t x2, uint8_t t) {
+  // r21 = 0
+  // r20:r19:r18 is our scratch space.
+  asm("mov r26, r20");
+  asm("clr r20");
+  asm("clr r21");
+  
+  // scratch = x2l * t
+  asm("mul r22, r26");
+  asm("movw r18, r0");
+  
+  // scratch += (x2h * t) << 8;
+  asm("mul r23, r26");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // t = ~t
+  asm("com r26");
+  
+  // scratch += x1l * ~t
+  asm("mul r24, r26");
+  asm("add r18, r0");
+  asm("adc r19, r1");
+  asm("adc r20, r21");
+  
+  // scratch += (x1h * ~t) << 8;
+  asm("mul r25, r26");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // scratch += x1
+  asm("add r18, r24");
+  asm("adc r19, r25");
+  asm("adc r20, r21");
+  
+  // result = scratch >> 8
+  asm("mov r24, r19");
+  asm("mov r25, r20");
+  
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}
+
+// Interpolate between two signed 16-bit numbers.
+__attribute__((naked)) uint16_t lerp16_s16(int16_t a, int16_t b, uint8_t t) {
+  return lerp_u16(a ^ 0x8000, b ^ 0x8000, t) ^ 0x8000;
+}  
+
+//-----------------------------------------------------------------------------
+// Interpolated table lookup.
+
+// Interpolate between elements in a 256-element, 8-bit table in flash, with
+// wrapping.
+__attribute__((naked)) uint8_t lerp_u8_u8(const uint8_t* table, uint16_t x) {
+  // x1 = x & 0xff; (in r23)
+  // t = x >> 8;  (in r22);
+  
+  // y1 = table[x1] (in r20);
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("lpm r20, z");
+
+  // x1++;
+  asm("inc r23");
+  
+  // y2 = table[x1]; (in r21);
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("lpm r21, z");
+  
+  // scratch = y2 * t
+  asm("mul r21, r22");
+  asm("mov r23, r0");  
+  asm("mov r24, r1");
+  
+  // t = ~t
+  asm("com r22");
+  
+  // scratch += y1 * ~t
+  asm("mul r20, r22");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  
+  asm("clr r1");
+  
+  // scratch += y1
+  asm("add r23, r20");
+  asm("adc r24, r1");
+  
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}
+
+
+// Interpolate between elements in a 256-element, 8-bit table in flash, with
+// wrapping, expanding the table value out to 16 bits.
+__attribute__((naked)) uint16_t lerp_u8_u16(const uint8_t* table, uint16_t x) {
+  asm("clr r20");
+  asm("clr r21");
+  
+  // y1 = table[(x >> 8)]
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("lpm r26, z");
+
+  // x1++;
+  asm("inc r23");
+  
+  // y2 = table[(x >> 8) + 1];
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("lpm r27, z");
+  
+  // scratch = (y2 * 257) * t
+  asm("mul r27, r22");
+  asm("movw r18, r0");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // t = ~t
+  asm("com r22");
+  
+  // scratch += (y1 * 257) * ~t
+  asm("mul r26, r22");
+  asm("add r18, r0");
+  asm("adc r19, r1");
+  asm("adc r20, r21");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // scratch += (y1 * 257)
+  asm("add r18, r26");
+  asm("adc r19, r26");
+  asm("adc r20, r21");
+  
+  // result = scratch >> 8
+  asm("mov r24, r19");
+  asm("mov r25, r20");
+  
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}
+
+
+// Interpolate between elements in a 256-element, 8-bit table in RAM,
+// with wrapping, expanding the table value out to 16 bits.
+__attribute__((naked)) uint16_t lerp_u8_u16_ram(uint8_t* table, uint16_t x) {
+  asm("clr r20");
+  asm("clr r21");
+  
+  // y1 = table[(x >> 8)]
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("ld r26, z");
+
+  // x1++;
+  asm("inc r23");
+  
+  // y2 = table[(x >> 8) + 1];
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("ld r27, z");
+  
+  // scratch = (y2 * 257) * t
+  asm("mul r27, r22");
+  asm("movw r18, r0");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // t = ~t
+  asm("com r22");
+  
+  // scratch += (y1 * 257) * ~t
+  asm("mul r26, r22");
+  asm("add r18, r0");
+  asm("adc r19, r1");
+  asm("adc r20, r21");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // scratch += (y1 * 257)
+  asm("add r18, r26");
+  asm("adc r19, r26");
+  asm("adc r20, r21");
+  
+  // result = scratch >> 8
+  asm("mov r24, r19");
+  asm("mov r25, r20");
+  
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}
+
+// Interpolate between elements in a 256-element, signed 8-bit table, with wrapping,
+// expanding the table values out to a signed 16-bit value.
+// input r25:r24 - table
+// input r23:r22 - x
+// output r25:r24 - signed 16-bit interpolated table value.
+__attribute__((naked)) int16_t lerp_s8_s16(const int8_t* table, uint16_t x) {
+  // r26 = 0.
+  asm("clr r26");
+  
+  // r19:r18 = y1 = expand(table[(x >> 8)])
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("lpm r18, z");
+  asm("mov r19, r18");
+  asm("sbrc r18, 7");
+  asm("subi r19, 1");
+
+  // x1++;
+  asm("inc r23");
+  
+  // r21:r20 = y2 = expand(table[(x >> 8) + 1]);
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("lpm r20, z");
+  asm("mov r21, r20");
+  asm("sbrc r20, 7");
+  asm("subi r21, 1");
+  
+  // r22 = t = interpolation factor
+  // r25:r24:r23 = scratch
+  
+  // scratch = ((signed)y2h * t) << 8
+  asm("mulsu r21, r22");
+  asm("clr r23");
+  asm("mov r24, r0");
+  asm("mov r25, r1");
+  
+  // scratch += y2l * t
+  asm("mul r20, r22");
+  asm("mov r23, r0");
+  asm("add r24, r1");
+  asm("adc r25, r26");
+  
+  // t = ~t
+  asm("com r22");
+  
+  // scratch += ((signed)y1h * t) << 8
+  asm("mulsu r19, r22");
+  asm("add r24, r0");
+  asm("adc r25, r1");
+  
+  // scratch += y1l * t
+  asm("mul r18, r22");
+  asm("add r23, r0");
+  asm("adc r24, r1");
+  asm("adc r25, r26");
+  
+  // scratch += y1
+  asm("add r23, r18");
+  asm("adc r24, r19");
+  asm("adc r25, r26");
+  
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}
+
+
+int16_t lerp_s8_s16(const int8_t* table, int16_t x) {
+  return lerp_s8_s16(table, uint16_t(x ^ 0x8000));
+}  
+
+
+// Interpolate between elements in a 257-element, 8-bit table, no wrapping,
+// expanding the table value out to 16 bits.
+__attribute__((naked)) uint16_t lerp_u8_u16_nowrap(const uint8_t* table, uint16_t x) {
+  asm("clr r20");
+  asm("clr r21");
+  
+  // y1 = table[(x >> 8)]
+  // y2 = table[(x >> 8) + 1];
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("lpm r26, z+");
+  asm("lpm r27, z");
+
+  // scratch = (y2 * 257) * t
+  asm("mul r27, r22");
+  asm("movw r18, r0");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // t = ~t
+  asm("com r22");
+  
+  // scratch += (y1 * 257) * ~t
+  asm("mul r26, r22");
+  asm("add r18, r0");
+  asm("adc r19, r1");
+  asm("adc r20, r21");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // scratch += (y1 * 257)
+  asm("add r18, r26");
+  asm("adc r19, r26");
+  asm("adc r20, r21");
+  
+  // result = scratch >> 8
+  asm("mov r24, r19");
+  asm("mov r25, r20");
+  
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}
+
+
+uint8_t lerp_u8_u8_nowrap(const uint8_t* table, uint16_t x) {
+  return lerp_u8_u16_nowrap(table, x) >> 8;
+}  
+
+
+// Interpolate between elements in a 16-bit table, no wrapping.
+__attribute__((naked)) uint16_t lerp_u16_u16_nowrap(const uint16_t* table, uint16_t x) {
+  // scratch = 0;
+  asm("clr r20");
+  asm("clr r21");
+  
+  // table += (x >> 8) * 2
+  asm("movw r30, r24");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+  asm("add r30, r23");
+  asm("adc r31, r1");
+
+  // y1 = table[0];
+  // y2 = table[1];
+  asm("lpm r24, z+");
+  asm("lpm r25, z+");
+  asm("lpm r26, z+");
+  asm("lpm r27, z");
+
+  // scratch = y2.l * t
+  asm("mul r26, r22");
+  asm("movw r18, r0");
+  
+  // scratch += (y2.h * t) << 8;
+  asm("mul r27, r22");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // t = ~t
+  asm("com r22");
+  
+  // scratch += y1.l * ~t
+  asm("mul r24, r22");
+  asm("add r18, r0");
+  asm("adc r19, r1");
+  asm("adc r20, r21");
+  
+  // scratch += (y1.h * ~t) << 8;
+  asm("mul r25, r22");
+  asm("add r19, r0");
+  asm("adc r20, r1");
+  
+  // scratch += y1
+  asm("add r18, r24");
+  asm("adc r19, r25");
+  asm("adc r20, r21");
+  
+  // result = scratch >> 8
+  asm("mov r24, r19");
+  asm("mov r25, r20");
+  
+  asm("clr r1");
+  asm("ret");
+
+  // Dummy return;
+  return 0;
+}  
+
+//-----------------------------------------------------------------------------
+// Color class
+
+uint8_t hex2dec(char code) {
+  uint8_t x = code - 48;
+  if(x > 9) x -= 7;
+  if(x > 15) x -= 32;
+  return x;
+}
+
+Color blip_color(uint16_t r, uint16_t g, uint16_t b) {
+  Color result = { r, g, b };
+  return result;
+}  
+
+Color blip_color(float r, float g, float b) {
+  Color result = {
+    uint16_t(r * 65535),
+    uint16_t(g * 65535),
+    uint16_t(b * 65535)
+  };
+  return result;
+}  
+
+Color blip_color(uint16_t hue) {
+  Color result = {
+    blip_hsv_r(hue),
+    blip_hsv_g(hue),
+    blip_hsv_b(hue)
+  };
+  return result;
+}
+
+Color blip_color(float hue) {
+  return blip_color(hue * 65535);
+}  
+
+Color blip_color(const char* hexcode) {
+  uint8_t r, g, b;
+  
+  if (hexcode[3] == 0) {
+    // rgb
+    r = hex2dec(hexcode[0]);
+    g = hex2dec(hexcode[1]);
+    b = hex2dec(hexcode[2]);
+    r |= r << 4;
+    g |= g << 4;
+    b |= b << 4;
+  }
+  else if (hexcode[4] == 0) {
+    // #rgb
+    r = hex2dec(hexcode[1]);
+    g = hex2dec(hexcode[2]);
+    b = hex2dec(hexcode[3]);
+    r |= r << 4;
+    g |= g << 4;
+    b |= b << 4;
+  }    
+  else if(hexcode[0] == '#') {
+    // #rrggbb
+    r = hex2dec(hexcode[1]) * 16 + hex2dec(hexcode[2]);
+    g = hex2dec(hexcode[3]) * 16 + hex2dec(hexcode[4]);
+    b = hex2dec(hexcode[5]) * 16 + hex2dec(hexcode[6]);
+  }
+  else {
+    // rrggbb
+    r = hex2dec(hexcode[0]) * 16 + hex2dec(hexcode[1]);
+    g = hex2dec(hexcode[2]) * 16 + hex2dec(hexcode[3]);
+    b = hex2dec(hexcode[4]) * 16 + hex2dec(hexcode[5]);
+  }
+  
+  Color result = {
+    uint16_t(r | r << 8),
+    uint16_t(g | g << 8),
+    uint16_t(b | b << 8)
+  };
+  return result;
+}
+
+//-----------------------------------------------------------------------------
+// Bliplace API, scalar functions.
+
+uint16_t blip_sin(uint16_t x) {
+  return lerp_u8_u16(sintab, x);
+}
+
+uint16_t blip_cos(uint16_t x) {
+  return lerp_u8_u16(sintab, x + 16384);
+}
+
+uint16_t blip_halfsin(uint16_t x) {
+  return (blip_sin(x / 2) - 32768) * 2;
+}  
+
+int16_t blip_ssin(uint16_t x) {
+  return blip_sin(x) ^ 0x8000;
+}  
+
+int16_t blip_scos(uint16_t x) {
+  return blip_cos(x) ^ 0x8000;
+}  
+
+uint16_t blip_scale(uint16_t x, uint16_t s) {
+  return mul_f16(x, s);
+}
+
+int16_t blip_scale(int16_t x, uint16_t s) {
+  return mul_f16(x, s);
+}
+
+// 'Smooth' add - doesn't overflow.
+uint16_t blip_smadd(uint16_t a, uint16_t b) {
+  return a + b - mul_f16(a, b);
+}  
+
+uint16_t blip_hsv_r(uint16_t h) {
+  return lerp_u8_u16(huetab, h);
+}
+
+uint16_t blip_hsv_g(uint16_t h) {
+  return lerp_u8_u16(huetab, h + 21845);
+}
+
+uint16_t blip_hsv_b(uint16_t h) {
+  return lerp_u8_u16(huetab, h + 43690);
+}
+
+uint16_t blip_pow2(uint16_t x) {
+  return blip_scale(x, x);
+}
+
+uint16_t blip_pow3(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  return blip_scale(x, x2);
+}
+  
+uint16_t blip_pow4(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  return blip_scale(x2, x2);
+}
+  
+uint16_t blip_pow5(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  uint16_t x3 = blip_scale(x, x2);
+  return blip_scale(x2, x3);
+}  
+
+uint16_t blip_pow6(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  uint16_t x3 = blip_scale(x, x2);
+  return blip_scale(x3, x3);
+}  
+
+uint16_t blip_pow7(uint16_t x) {
+  uint16_t x2 = blip_scale(x, x);
+  uint16_t x3 = blip_scale(x, x2);
+  uint16_t x4 = blip_scale(x2, x2);
+  return blip_scale(x3, x4);
+}
+
+uint16_t blip_root2(uint16_t x) {
+  return lerp_u8_u16_nowrap(root2, x);
+}
+
+uint16_t blip_root3(uint16_t x) {
+  return lerp_u8_u16_nowrap(root3, x);
+}
+
+uint16_t blip_root4(uint16_t x) {
+  return blip_root2(blip_root2(x));
+}
+
+uint16_t blip_root6(uint16_t x) {
+  return blip_root3(blip_root2(x));
+}
+
+uint16_t blip_root9(uint16_t x) {
+  return blip_root3(blip_root3(x));
+}  
+
+uint16_t blip_noise(uint16_t x) {
+  return lerp_u8_u16(noise, x);
+}
+
+uint16_t blip_lookup(const uint8_t* table, uint16_t x) {
+  return lerp_u8_u16(table, x);
+}
+
+uint16_t blip_random() {
+  return (uint16_t)xor128();
+}
+
+uint16_t blip_history1(uint16_t x) {
+  uint16_t cursor = blip_tick;
+  cursor -= x;
+  return lerp_u8_u16_ram(blip_history, cursor);
+}
+
+uint16_t blip_history2(uint16_t x) {
+  uint16_t cursor = blip_tick;
+  cursor -= x;
+  return lerp_u8_u16_ram(blip_history + 256, cursor);
+}
+
+//-----------------------------------------------------------------------------
+// Bliplace API, color functions.
+
+Color blip_scale(Color const& c, uint16_t s) {
+  Color result = {
+    blip_scale(c.r, s),
+    blip_scale(c.g, s),
+    blip_scale(c.b, s)
+  };
+  return result;
+}
+
+
+Color blip_scale(Color const& c, uint16_t s1, uint16_t s2) {
+  Color result = {
+    blip_scale(blip_scale(c.r, s1), s2),
+    blip_scale(blip_scale(c.g, s1), s2),
+    blip_scale(blip_scale(c.b, s1), s2)
+  };
+  return result;
+}
+
+Color blip_add(Color const& a, Color const& b) {
+  Color result = {
+    a.r + b.r,
+    a.g + b.g,
+    a.b + b.b
+  };
+  return result;
+}
+
+Color blip_smadd(Color const& a, Color const& b) {
+  Color result = {
+    blip_smadd(a.r, b.r),
+    blip_smadd(a.g, b.g),
+    blip_smadd(a.b, b.b)
+  };
+  return result;
+}
+
+Color blip_lerp(Color const& a, Color const& b, uint16_t x) {
+  uint8_t t = x >> 8;
+  Color result = {
+    lerp_u16(a.r, b.r, t),
+    lerp_u16(a.g, b.g, t),
+    lerp_u16(a.b, b.b, t)
+  };
+  return result;
+}
+
+//-----------------------------------------------------------------------------
+// Drawing function
+
+void blip_draw_sin(uint16_t phase, uint16_t frequency, Color color) {
+  uint16_t x = phase;
+  for (int i = 0; i < 8; i++) {
+    blip_pixels[i] = blip_scale(color, blip_sin(x));
+    x += frequency;
+  }
+}
+
 //---------------------------------------------------------------------------------
 // Timer interrupt, dispatches our LED update callback. Note that we _ijmp_ to
 // the callback, and _reti_ from the callback - this saves a few cycles per
@@ -101,7 +1148,7 @@ ISR(TIMER1_OVF_vect, ISR_NAKED)
   // map to jitter compensation values of 0, 1, 2, and 3. LDS doesn't touch
   // the status register, so this is safe to do before we've saved a copy of
   // it.
-  asm("lds r31, %0" : : "X" (TCNT1L));
+  asm("lds r31, %0" : : "M" (&TCNT1L));
   
   // Save the status register on the stack.
   asm("in r30, %0" : : "I"(_SFR_IO_ADDR(SREG)) );
@@ -423,8 +1470,8 @@ __attribute__((naked, aligned(4))) void red_field_A() {
 	// set next timeout, 6 cycles
 	asm("ldi r30, %0" : : "M" (lo8(RED_FIELD_A_TIMEOUT)) );
 	asm("ldi r31, %0" : : "M" (hi8(RED_FIELD_A_TIMEOUT)) );
-	asm("sts %0, r31" : : "X" (TCNT1H));
-	asm("sts %0, r30" : : "X" (TCNT1L));
+	asm("sts %0, r31" : : "M" (&TCNT1H));
+	asm("sts %0, r30" : : "M" (&TCNT1L));
 
 	// send 160 cycle pulse
 	{
@@ -462,8 +1509,8 @@ __attribute__((naked, aligned(4))) void red_field_B() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(RED_FIELD_B_TIMEOUT)) );
 	asm("ldi r31, %0" : : "M" (hi8(RED_FIELD_B_TIMEOUT)) );
-	asm("sts %0, r31" : : "X" (TCNT1H));
-	asm("sts %0, r30" : : "X" (TCNT1L));
+	asm("sts %0, r31" : : "M" (&TCNT1H));
+	asm("sts %0, r30" : : "M" (&TCNT1L));
 
 	// send 320 cycle pulse
 	{
@@ -744,8 +1791,8 @@ __attribute__((naked, aligned(4))) void green_field_A() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(GREEN_FIELD_A_TIMEOUT)) );
 	asm("ldi r31, %0" : : "M" (hi8(GREEN_FIELD_A_TIMEOUT)) );
-	asm("sts %0, r31" : : "X" (TCNT1H));
-	asm("sts %0, r30" : : "X" (TCNT1L));
+	asm("sts %0, r31" : : "M" (&TCNT1H));
+	asm("sts %0, r30" : : "M" (&TCNT1L));
 	
 	// send 160 cycle pulse
 	{
@@ -788,8 +1835,8 @@ __attribute__((naked, aligned(4))) void green_field_B() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(GREEN_FIELD_B_TIMEOUT)) );
 	asm("ldi r31, %0" : : "M" (hi8(GREEN_FIELD_B_TIMEOUT)) );
-	asm("sts %0, r31" : : "X" (TCNT1H));
-	asm("sts %0, r30" : : "X" (TCNT1L));
+	asm("sts %0, r31" : : "M" (&TCNT1H));
+	asm("sts %0, r30" : : "M" (&TCNT1L));
 	
 	// send 320 cycle pulse
 	{
@@ -1088,8 +2135,8 @@ __attribute__((naked, aligned(4))) void blue_field_A() {
 	// set next timeout
 	asm("ldi r30, %0" : : "M" (lo8(BLUE_FIELD_A_TIMEOUT)) );
 	asm("ldi r31, %0" : : "M" (hi8(BLUE_FIELD_A_TIMEOUT)) );
-	asm("sts %0, r31" : : "X" (TCNT1H));
-	asm("sts %0, r30" : : "X" (TCNT1L));
+	asm("sts %0, r31" : : "M" (&TCNT1H));
+	asm("sts %0, r30" : : "M" (&TCNT1L));
 	
 	// send 160 cycle pulse
 	{
@@ -1137,8 +2184,8 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
 	// Set next interrupt timeout. 6 cycles.
 	asm("ldi r30, %0" : : "M" (lo8(BLUE_FIELD_B_TIMEOUT)) );
 	asm("ldi r31, %0" : : "M" (hi8(BLUE_FIELD_B_TIMEOUT)) );
-	asm("sts %0, r31" : : "X" (TCNT1H));
-	asm("sts %0, r30" : : "X" (TCNT1L));
+	asm("sts %0, r31" : : "M" (&TCNT1H));
+	asm("sts %0, r30" : : "M" (&TCNT1L));
 	
 	// send 320 cycle pulse
 	{
@@ -1163,15 +2210,15 @@ __attribute__((naked, aligned(4))) void blue_field_B() {
   asm("breq blip_no_audio");
   
   // Store the previous ADC sample
-	asm("lds r30, %0" : : "X" (ADCL) );
+	asm("lds r30, %0" : : "M" (&ADCL) );
 	asm("sts blip_sample + 0, r30");
-	asm("lds r30, %0" : : "X" (ADCH) );
+	asm("lds r30, %0" : : "M" (&ADCH) );
 	asm("sts blip_sample + 1, r30");
   
 	// set ADC start conversion flag
-	asm("lds r30, %0" : : "X" (ADCSRA) );
-	asm("ori r30, %0" : : "X" (bit(ADSC)) );
-	asm("sts %0, r30" : : "X" (ADCSRA) );
+	asm("lds r30, %0" : : "M" (&ADCSRA) );
+	asm("ori r30, %0" : : "M" (bit(ADSC)) );
+	asm("sts %0, r30" : : "M" (&ADCSRA) );
   
   asm("blip_no_audio:");
 
@@ -1195,7 +2242,7 @@ extern "C" {
 __attribute__((naked)) void UpdateButtons()
 {
   asm("lds r25, buttonstate1");
-  asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON1_PIN));
+  asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "M"(BUTTON1_PIN));
   asm("jmp button_down1");
 
   asm("button_up1:");
@@ -1250,7 +2297,7 @@ __attribute__((naked)) void UpdateButtons()
   asm("button_done1:");
 
   asm("lds r25, buttonstate2");
-  asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "X"(BUTTON2_PIN));
+  asm("sbis %0, %1" : : "I"(_SFR_IO_ADDR(PINC)), "M"(BUTTON2_PIN));
   asm("jmp button_down2");
 
   asm("button_up2:");
@@ -1330,15 +2377,15 @@ __attribute__((naked)) void swap4d(void* vin, uint8_t* vout) {
   // constants as we load them. Note the "*3" so that we pick up values from
   // the same color channel.
 
-	asm("ldd r18, z+%0*6 + 1" : : "X"(PIN_0_TO_PIXEL));
-	asm("ldd r19, z+%0*6 + 1" : : "X"(PIN_1_TO_PIXEL));
-	asm("ldd r20, z+%0*6 + 1" : : "X"(PIN_2_TO_PIXEL));
-	asm("ldd r21, z+%0*6 + 1" : : "X"(PIN_3_TO_PIXEL));
+	asm("ldd r18, z+%0*6 + 1" : : "M"(PIN_0_TO_PIXEL));
+	asm("ldd r19, z+%0*6 + 1" : : "M"(PIN_1_TO_PIXEL));
+	asm("ldd r20, z+%0*6 + 1" : : "M"(PIN_2_TO_PIXEL));
+	asm("ldd r21, z+%0*6 + 1" : : "M"(PIN_3_TO_PIXEL));
   
-	asm("ldd r22, z+%0*6 + 1" : : "X"(PIN_4_TO_PIXEL));
-	asm("ldd r23, z+%0*6 + 1" : : "X"(PIN_5_TO_PIXEL));
-	asm("ldd r24, z+%0*6 + 1" : : "X"(PIN_6_TO_PIXEL));
-	asm("ldd r25, z+%0*6 + 1" : : "X"(PIN_7_TO_PIXEL));
+	asm("ldd r22, z+%0*6 + 1" : : "M"(PIN_4_TO_PIXEL));
+	asm("ldd r23, z+%0*6 + 1" : : "M"(PIN_5_TO_PIXEL));
+	asm("ldd r24, z+%0*6 + 1" : : "M"(PIN_6_TO_PIXEL));
+	asm("ldd r25, z+%0*6 + 1" : : "M"(PIN_7_TO_PIXEL));
   
   // Gamma-correct all the values.
   asm("mul r18, r18"); asm("mov r18, r1");
@@ -1456,6 +2503,11 @@ void delayblah() {
 }  
 
 void blip_selftest() {
+  // Turn the watchdog timer off.
+  MCUSR &= ~(1 << WDRF);
+  WDTCSR = bit(WDCE) | bit(WDE);
+  WDTCSR = 0;
+
 	// Turn off the serial interface, which the Arduino bootloader leaves on
   // by default.
 	UCSR0B &= ~(1 << RXEN0);
@@ -1566,7 +2618,9 @@ void blip_shutdown() {
 	TCCR2B = 0;
 	
 	// Disable watchdog
-	WDTCSR = 0;
+  MCUSR &= ~(1 << WDRF);
+  WDTCSR = bit(WDCE) | bit(WDE);
+  WDTCSR = 0;
 	
 	// Power down all peripherals. This has to be done last otherwise some of the
 	// above settings don't actually do anything.
@@ -1602,6 +2656,7 @@ void blip_setup() {
   SMCR = 0;
   
   // Turn the watchdog timer off.
+  MCUSR &= ~(1 << WDRF);
   WDTCSR = bit(WDCE) | bit(WDE);
   WDTCSR = 0;
 
@@ -1684,12 +2739,14 @@ void blip_sleep()
 {
   // Turn off all peripherals and disable brownout detection during sleep mode.
   blip_shutdown();
-  sleep_bod_disable();
+  //sleep_bod_disable();
   
   sei();
 
-  // Turn on the watchdog timer.
+  // Enable sleep mode.
   SMCR = bit(SE) | bit(SM1);
+
+  // Turn on the watchdog timer.
   WDTCSR = bit(WDCE) | bit(WDE);
   WDTCSR = bit(WDIE);
 
@@ -1772,4 +2829,4 @@ int blip_button2_released_after(uint16_t ticks) {
   return ((buttonstate2 == 1) && (debounce_down2 >= ticks)) ? 1 : 0;
 }  
 
-//---------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
