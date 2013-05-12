@@ -2,6 +2,7 @@ Debug
 Release
 notes
 ipch
+Datasheets
 *.atsuo
 *.sdf
 *.suo
