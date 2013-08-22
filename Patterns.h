@@ -21,5 +21,7 @@ void Blackbody();
 void Bliplace1();
 void BouncingBalls();
 void Ocean();
+void ColorFlip();
+void Strobey();
 
 #endif

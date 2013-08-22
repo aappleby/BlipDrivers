@@ -18,11 +18,10 @@
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
-    <OverrideVtorValue>
-    </OverrideVtorValue>
+    <OverrideVtorValue>exception_table</OverrideVtorValue>
     <eraseonlaunchrule>0</eraseonlaunchrule>
     <AsfVersion>3.1.3</AsfVersion>
-    <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
+    <avrtool>com.atmel.avrdbg.tool.simulator</avrtool>
     <avrtoolinterface>ISP</avrtoolinterface>
     <com_atmel_avrdbg_tool_ispmk2>
       <ToolType>com.atmel.avrdbg.tool.ispmk2</ToolType>
@@ -30,7 +29,7 @@
       <ToolNumber>0000B0040689</ToolNumber>
       <Channel>
         <host>127.0.0.1</host>
-        <port>27081</port>
+        <port>9752</port>
         <ssl>False</ssl>
       </Channel>
       <ToolOptions>
@@ -38,7 +37,7 @@
         <InterfaceProperties>
           <JtagDbgClock>249000</JtagDbgClock>
           <JtagProgClock>1000000</JtagProgClock>
-          <IspClock>250000</IspClock>
+          <IspClock>0</IspClock>
           <JtagInChain>false</JtagInChain>
           <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
           <JtagDevicesBefore>0</JtagDevicesBefore>
@@ -58,6 +57,12 @@
         <port>27081</port>
         <ssl>False</ssl>
       </Channel>
+      <ToolOptions>
+        <InterfaceProperties>
+          <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
+        </InterfaceProperties>
+        <InterfaceName>ISP</InterfaceName>
+      </ToolOptions>
     </com_atmel_avrdbg_tool_simulator>
     <AsfFrameworkConfig>
       <framework-data>
@@ -138,10 +143,7 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Bliplace.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Bliplace.h">
+    <Compile Include="Bliplace2_AVR.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.cpp">

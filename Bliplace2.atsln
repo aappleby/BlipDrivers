@@ -1,0 +1,54 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Bliplace2_AVR", "Bliplace2_AVR.cppproj", "{0402CB46-0A73-4CCA-8E71-413D80015C06}"
+EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Bliplace2_D20", "Bliplace2_D20.cppproj", "{48453710-E5E3-4B05-A1CD-4CA2D1E30393}"
+EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Bliplace2_KL0", "Bliplace2_KL0.cppproj", "{7A30BE37-92B5-4DB0-8568-CBB539111073}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Debug|AVR = Debug|AVR
+		Debug|Mixed Platforms = Debug|Mixed Platforms
+		Release|ARM = Release|ARM
+		Release|AVR = Release|AVR
+		Release|Mixed Platforms = Release|Mixed Platforms
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Debug|ARM.ActiveCfg = Debug|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Debug|AVR.ActiveCfg = Debug|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Debug|AVR.Build.0 = Debug|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Debug|Mixed Platforms.ActiveCfg = Debug|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Debug|Mixed Platforms.Build.0 = Debug|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Release|ARM.ActiveCfg = Release|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Release|AVR.ActiveCfg = Release|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Release|AVR.Build.0 = Release|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Release|Mixed Platforms.ActiveCfg = Release|AVR
+		{0402CB46-0A73-4CCA-8E71-413D80015C06}.Release|Mixed Platforms.Build.0 = Release|AVR
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Debug|ARM.ActiveCfg = Debug|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Debug|ARM.Build.0 = Debug|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Debug|AVR.ActiveCfg = Debug|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Debug|Mixed Platforms.ActiveCfg = Debug|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Debug|Mixed Platforms.Build.0 = Debug|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Release|ARM.ActiveCfg = Release|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Release|ARM.Build.0 = Release|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Release|AVR.ActiveCfg = Release|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Release|Mixed Platforms.ActiveCfg = Release|ARM
+		{48453710-E5E3-4B05-A1CD-4CA2D1E30393}.Release|Mixed Platforms.Build.0 = Release|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Debug|ARM.ActiveCfg = Debug|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Debug|ARM.Build.0 = Debug|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Debug|AVR.ActiveCfg = Debug|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Debug|Mixed Platforms.ActiveCfg = Debug|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Debug|Mixed Platforms.Build.0 = Debug|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Release|ARM.ActiveCfg = Release|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Release|ARM.Build.0 = Release|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Release|AVR.ActiveCfg = Release|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Release|Mixed Platforms.ActiveCfg = Release|ARM
+		{7A30BE37-92B5-4DB0-8568-CBB539111073}.Release|Mixed Platforms.Build.0 = Release|ARM
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

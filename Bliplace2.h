@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#define BOARDTYPE_PROTO3
+//#define BOARDTYPE_MICRO
+
 //--------------------------------------------------------------------------------
 // Our "framebuffer" is a simple array of 8 RGB pixels.
 
@@ -61,6 +64,9 @@ void blip_swap64();
 
 //--------------------------------------------------------------------------------
 
+uint16_t blip_time();
+uint16_t blip_tempo(uint16_t bpm);
+
 uint16_t blip_sin(uint16_t x);
 uint16_t blip_cos(uint16_t x);
 uint16_t blip_halfsin(uint16_t x);
@@ -108,7 +114,6 @@ Color    blip_scale(Color const& c, uint16_t s1, uint16_t s2);
 Color    blip_add(Color const& a, Color const& b);
 Color    blip_smadd(Color const& a, Color const& b);
 Color    blip_lerp(Color const& a, Color const& b, uint16_t x);
-Color    blip_hsv(uint16_t h);
 
 //--------------------------------------------------------------------------------
 
@@ -116,8 +121,6 @@ void blip_draw_sin(uint16_t phase, uint16_t frequency, Color color);
 
 //--------------------------------------------------------------------------------
 // Board configuration.
-
-#define BOARDTYPE_PROTO3
 
 // fuses for ATMega328p -
 // low:      0xE2
@@ -127,7 +130,7 @@ void blip_draw_sin(uint16_t phase, uint16_t frequency, Color color);
 // prototype 2 settings
 /*
 #define PORT_SOURCE PORTD
-#define PORT_SINK DDRB
+#define PORT_SINK   PORTB
 #define SINK_GREEN 0x0C
 #define SINK_RED 0x12
 #define SINK_BLUE 0x01;
@@ -142,8 +145,6 @@ void blip_draw_sin(uint16_t phase, uint16_t frequency, Color color);
 #define PORT_SOURCE PORTD
 #define PORT_SINK   PORTB
 #define PORT_STATUS PORTC
-
-#define ADC_CHANNEL 1
 
 #define SINK_RED   0x7D  // (~((1 << 1) | (1 << 7)))
 #define SINK_GREEN 0xB3  // (~((1 << 2) | (1 << 3) | (1 << 6)))
@@ -161,8 +162,6 @@ void blip_draw_sin(uint16_t phase, uint16_t frequency, Color color);
 #define PORT_SOURCE PORTD
 #define PORT_SINK   PORTB
 #define PORT_STATUS PORTC
-
-#define ADC_CHANNEL 0
 
 enum {
   PIXEL_0_TO_PIN = 1, PIXEL_1_TO_PIN = 2, PIXEL_2_TO_PIN = 0, PIXEL_3_TO_PIN = 3,
@@ -195,8 +194,6 @@ enum {
 #define PORT_SINK   PORTB
 #define PORT_STATUS PORTC
 
-#define ADC_CHANNEL 0
-
 enum {
   PIXEL_0_TO_PIN = 1, PIXEL_1_TO_PIN = 2, PIXEL_2_TO_PIN = 0, PIXEL_3_TO_PIN = 3,
   PIXEL_4_TO_PIN = 4, PIXEL_5_TO_PIN = 6, PIXEL_6_TO_PIN = 5, PIXEL_7_TO_PIN = 7,
@@ -228,8 +225,6 @@ enum {
 #define PORT_SINK   PORTB
 #define PORT_STATUS PORTC
 
-#define ADC_CHANNEL 0
-
 enum {
   PIXEL_0_TO_PIN = 1, PIXEL_1_TO_PIN = 2, PIXEL_2_TO_PIN = 0, PIXEL_3_TO_PIN = 3,
   PIXEL_4_TO_PIN = 4, PIXEL_5_TO_PIN = 6, PIXEL_6_TO_PIN = 5, PIXEL_7_TO_PIN = 7,
@@ -247,6 +242,40 @@ enum {
 
 #define MIC_POWER 2
 #define MIC_PIN 7
+#endif
+
+//--------------------------------------------------------------------------------
+// breadboard prototype w/ usb
+
+#ifdef BOARDTYPE_BREADBOARD
+#define DIR_SOURCE  DDRD
+#define DIR_SINK    DDRB
+#define DIR_STATUS  DDRC
+
+#define PORT_SOURCE PORTD
+#define PORT_SINK   PORTB
+#define PORT_STATUS PORTC
+
+enum {
+  PIXEL_0_TO_PIN = 0, PIXEL_1_TO_PIN = 1, PIXEL_2_TO_PIN = 2, PIXEL_3_TO_PIN = 3,
+  PIXEL_4_TO_PIN = 4, PIXEL_5_TO_PIN = 5, PIXEL_6_TO_PIN = 6, PIXEL_7_TO_PIN = 7,
+  
+  PIN_0_TO_PIXEL = 0, PIN_1_TO_PIXEL = 1, PIN_2_TO_PIXEL = 2, PIN_3_TO_PIXEL = 3,
+  PIN_4_TO_PIXEL = 4, PIN_5_TO_PIXEL = 5, PIN_6_TO_PIXEL = 6, PIN_7_TO_PIXEL = 7,
+};  
+
+#define SINK_RED 0x6E
+#define SINK_GREEN 0xF1
+#define SINK_BLUE 0x9F
+
+#define BUTTON1_PIN 2
+#define BUTTON2_PIN 2
+
+#define MIC_POWER 0
+#define MIC_PIN 1
+
+#define USING_CRYSTAL
+
 #endif
 
 //--------------------------------------------------------------------------------
@@ -278,6 +307,71 @@ enum {
 #define MIC_POWER 2
 #define BUTTON1_PIN 3
 #define BUTTON2_PIN 3
+#endif
+
+//--------------------------------------------------------------------------------
+// Teensy 2.0, ATMega32u4 w/ 16 mhz crystal.
+
+#ifdef BOARDTYPE_TEENSY2
+#define DIR_SOURCE  DDRB
+#define DIR_SINK    DDRD
+#define DIR_STATUS  DDRC
+
+#define PORT_SOURCE PORTB
+#define PORT_SINK   PORTD
+#define PORT_STATUS PORTC
+
+enum {
+  PIXEL_0_TO_PIN = 0, PIXEL_1_TO_PIN = 1, PIXEL_2_TO_PIN = 2, PIXEL_3_TO_PIN = 3,
+  PIXEL_4_TO_PIN = 4, PIXEL_5_TO_PIN = 5, PIXEL_6_TO_PIN = 6, PIXEL_7_TO_PIN = 7,
+  
+  PIN_0_TO_PIXEL = 0, PIN_1_TO_PIXEL = 1, PIN_2_TO_PIXEL = 2, PIN_3_TO_PIXEL = 3,
+  PIN_4_TO_PIXEL = 4, PIN_5_TO_PIXEL = 5, PIN_6_TO_PIXEL = 6, PIN_7_TO_PIXEL = 7,
+};  
+
+#define SINK_RED 0xFE
+#define SINK_GREEN 0xFD
+#define SINK_BLUE 0xFB
+
+#define BUTTON1_PIN 1
+#define BUTTON2_PIN 1
+
+#define MIC_POWER 2
+#define MIC_PIN 7
+
+#define USING_CRYSTAL
+
+#endif
+
+//--------------------------------------------------------------------------------
+
+#ifdef BOARDTYPE_MICRO
+#define DIR_SOURCE  DDRD
+#define DIR_SINK    DDRB
+#define DIR_STATUS  DDRC
+
+#define PORT_SOURCE PORTD
+#define PORT_SINK   PORTB
+#define PORT_STATUS PORTC
+
+enum {
+	PIXEL_0_TO_PIN = 0, PIXEL_1_TO_PIN = 1, PIXEL_2_TO_PIN = 2, PIXEL_3_TO_PIN = 3,
+	PIXEL_4_TO_PIN = 4, PIXEL_5_TO_PIN = 5, PIXEL_6_TO_PIN = 6, PIXEL_7_TO_PIN = 7,
+	
+	PIN_0_TO_PIXEL = 0, PIN_1_TO_PIXEL = 1, PIN_2_TO_PIXEL = 2, PIN_3_TO_PIXEL = 3,
+	PIN_4_TO_PIXEL = 4, PIN_5_TO_PIXEL = 5, PIN_6_TO_PIXEL = 6, PIN_7_TO_PIXEL = 7,
+};
+
+#define SINK_RED 0xFD
+#define SINK_GREEN 0xFE
+#define SINK_BLUE 0xFB
+
+#define BUTTON1_PIN 1
+#define BUTTON2_PIN 1
+
+#define MIC_POWER 2
+#define MIC_PIN 1
+
 #endif
 
 //--------------------------------------------------------------------------------

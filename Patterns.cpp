@@ -1,4 +1,4 @@
-#include "Bliplace.h"
+#include "Bliplace2.h"
 
 //--------------------------------------------------------------------------------
 // Tests button functionality.
@@ -213,8 +213,8 @@ void SlowColorCycle() {
   uint16_t time = blip_tick;
   for(int i = 0; i < 8; i++) {
     blip_pixels[i].r = blip_sin(time * 3 + i * 6500);
-    blip_pixels[i].g = blip_sin(time * 4 + i * 7000);
-    blip_pixels[i].b = blip_sin(time * 5 + i * 7500);
+    blip_pixels[i].g = blip_sin(time * 5 + i * 7000);
+    blip_pixels[i].b = blip_sin(time * 4 + i * 7500);
   }
 }	
 
@@ -376,6 +376,41 @@ void Confetti() {
     phase_g += 40503;
     phase_b += 40503;
   }    
+}  
+
+//--------------------------------------------------------------------------------
+
+void ColorFlip() {
+  static int state = 0;
+  int hit = 0;
+  
+  if ((state == 0) && (blip_bright2 == 65535)) {
+    hit = 1;
+    state = 1;
+  } else if ((state == 1) && (blip_bright2 < 20000)) {
+    state = 0;
+  }
+  
+  static uint16_t hue = 0;
+  
+  if (hit) {
+    hue += 15000 + blip_random() % 4000;
+  }
+  
+  const Color white = blip_color("#ffffff");
+  for (int i = 0; i < 8; i++) {
+    Color spark = blip_scale(white, blip_noise(blip_tick + i * 7000), blip_bright1);
+    blip_pixels[i] = blip_scale(blip_color(hue), (blip_bright2/2) + 20000);
+    blip_pixels[i] = blip_smadd(blip_pixels[i], spark);
+  }    
+}  
+
+//--------------------------------------------------------------------------------
+
+void Strobey() {
+  for (int i = 0; i < 8; i++) {
+    blip_pixels[i] = blip_scale(blip_color(blip_tempo(20) + i * 1000), blip_sin(blip_tick * 200), blip_bright2);
+  }
 }  
 
 //--------------------------------------------------------------------------------

@@ -1,5 +1,12 @@
-#include "Bliplace.h"
+#include "Bliplace2.h"
 #include "Patterns.h"
+
+#include <avr/interrupt.h>
+
+#define F_CPU 8000000
+
+#include <avr/io.h>
+#include <util/delay.h>
 
 //------------------------------------------------------------------------------
 
@@ -10,15 +17,17 @@ int pattern_index = 0;
 void SleepPattern();
 
 pattern_callback patterns[] = {
+	SlowColorCycle,
+  Strobey,
+  ColorFlip,
+	AudioMeter,
+  SleepPattern,
   BouncingBalls,
   Ocean,
 	SunAndStars,
-	SlowColorCycle,
 	Blackbody,
-  SleepPattern,
 	CheshireSmile,
 	RomanCandle,
-	AudioMeter,
   Confetti,
 	DancingSapphire,
   hsv_test,
@@ -45,48 +54,69 @@ void SleepPattern() {
   if (pattern_index == pattern_count) pattern_index = 0;
 }
 
-extern uint8_t blip_bits_green[8];
-
-/*
-const Color grape = Color::fromHex("421C52");
-const Color peach = Color::fromHex("F95");
-const Color hotpink = Color::fromHex("f660ab");
-const Color pine = Color::fromHex("#466d3d");
-const Color lemon = Color::fromHex("ffff33");
-*/
+void TempoPattern() {
+  uint16_t tempo = blip_tempo(60);
+  
+  for (int i = 0; i < 8; i++) {
+    blip_pixels[i].g = blip_scale(blip_sin(tempo + i * 8192 + 4096), blip_bright1);
+  }    
+}  
 
 int main(void)
 {
-  //wdt_reset();
-  //wdt_disable();
-  
-  blip_selftest();
+	/*
+	DDRB = 0xFF;
+	PORTB = 0xFB;
+	DDRC = 0x00;
+	PORTC = 0x00;
+	DDRD = 0xFF;
+	PORTD = 0x01;
+	while(1) {
+		PORTB = 0xFD;
+		for (int i = 0; i < 8; i++) {
+			_delay_ms(1000);
+			PORTD = (PORTD << 1) | (PORTD >> 7);		
+		}
+		PORTB = 0xFE;
+		for (int i = 0; i < 8; i++) {
+			_delay_ms(1000);
+			PORTD = (PORTD << 1) | (PORTD >> 7);
+		}
+		PORTB = 0xFB;
+		for (int i = 0; i < 8; i++) {
+			_delay_ms(1000);
+			PORTD = (PORTD << 1) | (PORTD >> 7);
+		}
+	}
+	*/
+	
+	
+    //blip_selftest();
   
 	blip_setup();
   
+  /*
+  cli();
+  DDRD = 0xFF;
+  PORTD = 0xFF;
+  while(1);
+  */
+  
 	while(1) {
     
+    ///*
     if((buttonstate1 == 1) && (debounce_down1 > 256)) {
       pattern_index++;
       if (pattern_index == pattern_count) pattern_index = 0;
       debounce_down1 = 0;
     }
-
-    //blip_audio_enable = buttonstate2;
+    //*/
 
     blip_clear();
+    //AudioMeter();
     patterns[pattern_index]();
+    //TempoPattern();
     
-    //uint16_t t = blip_tick * 16;
-    
-    //t = blip_pow6(65536 - t);
-    //t = blip_halfsin(t);
-    //t = blip_pow4(t);
-    
-    //blip_pixels[0].r = t;
-    //blip_pixels[1].r = blip_sin(blip_tick * 16 - 16384);
-    //Color teal = Color::fromHex("#0f8");
-    //blip_draw_sin(blip_tick * 16, 8192, teal);
-		blip_swap();
+	  blip_swap();
 	}
 }
